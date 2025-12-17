@@ -1,0 +1,7 @@
+{
+  "name": "Speech Practice Pal",
+  "description": "An interactive web application for students to practice problem phoneme sounds independently with AI feedback, designed for use with speech pathologists.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
