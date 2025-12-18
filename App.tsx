@@ -11,8 +11,55 @@ import ReportModal from './components/ReportModal';
 import { SessionState, ErrorDetail, ReportData, DetailedError, AnalysisResult, SentenceType } from './types'; 
 import { TONGUE_TWISTER_SENTENCES, CONVERSATIONAL_SENTENCES, BUTTON_PRIMARY_PURPLE, BUTTON_SECONDARY_BLUE, PRIMARY_PURPLE, TEXT_DARK, ACCENT_BLUE, SLOWER_SPEECH_RATE, FAST_SPEECH_RATE } from './constants';
 import { geminiService } from './services/geminiService';
-// Removed speechToTextService import as we are now using Gemini Multimodal
 import { decodeAudioData, decodeBase64, playAudioBuffer, encodeWAV } from './services/audioService'; 
+
+// Raw content of audio-recorder-processor.js for dynamic loading via Blob URL
+// This bypasses file path resolution issues by directly providing the script content.
+const AUDIO_RECORDER_PROCESSOR_CODE = `
+// audio-recorder-processor.js
+// This file is an AudioWorkletProcessor, which runs in a separate thread.
+
+/**
+ * An AudioWorkletProcessor for recording audio data from a microphone.
+ * It receives audio input from the browser's audio graph and posts Float32Array
+ * chunks back to the main thread for further processing.
+ */
+class AudioRecorderProcessor extends AudioWorkletProcessor {
+  constructor() {
+    super();
+    // This port allows communication between the Worklet and the main thread.
+    this.port.onmessage = (event) => {
+      // Future: Could handle messages like setting sample rate, starting/stopping.
+      // For now, it primarily sends data out.
+    };
+  }
+
+  /**
+   * The process method is called by the Web Audio API on the audio rendering thread.
+   * It receives audio input and can produce audio output.
+   * @param inputs An array of audio input arrays. Each inner array represents a channel.
+   * @param outputs An array of audio output arrays (not used for recording).
+   * @param parameters A map of AudioParam names and their current values (not used here).
+   * @returns Always returns true to indicate that the AudioWorkletNode is still active.
+   */
+  process(inputs, outputs, parameters) {
+    // Only process if there's input audio and it has at least one channel.
+    if (inputs[0] && inputs[0].length > 0) {
+      const inputChannelData = inputs[0][0]; // Get the first channel of the first input.
+      
+      // Post the audio data (Float32Array) back to the main thread.
+      // Transferable objects can be moved efficiently without copying.
+      this.port.postMessage(inputChannelData);
+    }
+    
+    // Return true to keep the AudioWorkletNode alive and processing.
+    return true;
+  }
+}
+
+// Register the AudioWorkletProcessor with a unique name.
+registerProcessor('audio-recorder-processor', AudioRecorderProcessor);
+`;
 
 const App: React.FC = () => {
   const [sessionState, setSessionState] = useState<SessionState>(SessionState.CHOOSING_DURATION);
@@ -37,12 +84,13 @@ const App: React.FC = () => {
 
   const inputAudioContextRef = useRef<AudioContext | null>(null);
   const microphoneStreamRef = useRef<MediaStream | null>(null); 
-  const scriptProcessorRef = useRef<ScriptProcessorNode | null>(null); 
+  const audioWorkletNodeRef = useRef<AudioWorkletNode | null>(null);
   const audioDataBufferRef = useRef<Float32Array[]>([]); 
 
   const outputAudioContextRef = useRef<AudioContext | null>(null);
   const outputAudioGainNodeRef = useRef<GainNode | null>(null);
   const nextAudioStartTimeRef = useRef<number>(0);
+  const audioWorkletBlobUrlRef = useRef<string | null>(null); // Ref for Blob URL
 
   // Initialize AudioContexts and GainNode
   useEffect(() => {
@@ -50,17 +98,45 @@ const App: React.FC = () => {
     outputAudioGainNodeRef.current = outputAudioContextRef.current.createGain();
     outputAudioGainNodeRef.current.connect(outputAudioContextRef.current.destination);
 
+    // Initialize input AudioContext and load AudioWorklet module dynamically via Blob URL
+    const initInputAudio = async () => {
+      try {
+        if (!inputAudioContextRef.current || inputAudioContextRef.current.state === 'closed') {
+          inputAudioContextRef.current = new AudioContext({ sampleRate: 16000 });
+        }
+        
+        // Create a Blob from the AudioWorklet script content
+        const blob = new Blob([AUDIO_RECORDER_PROCESSOR_CODE], { type: 'application/javascript' });
+        // Create an object URL for the Blob
+        audioWorkletBlobUrlRef.current = URL.createObjectURL(blob);
+
+        // Load the AudioWorklet module using the Blob URL
+        await inputAudioContextRef.current.audioWorklet.addModule(audioWorkletBlobUrlRef.current);
+      } catch (error) {
+        console.error("Failed to load audio worklet module from Blob URL:", error);
+        setMicrophoneError("Failed to initialize audio. Please try refreshing.");
+        setSessionState(SessionState.MICROPHONE_DENIED);
+      }
+    };
+    initInputAudio();
+
     return () => {
       outputAudioContextRef.current?.close();
       inputAudioContextRef.current?.close();
       microphoneStreamRef.current?.getTracks().forEach(track => track.stop());
+      audioWorkletNodeRef.current?.disconnect();
+      // Revoke the Blob URL to free up memory
+      if (audioWorkletBlobUrlRef.current) {
+        URL.revokeObjectURL(audioWorkletBlobUrlRef.current);
+        audioWorkletBlobUrlRef.current = null;
+      }
     };
   }, []);
 
   const requestMicrophone = useCallback(async () => {
     try {
-      if (!inputAudioContextRef.current || inputAudioContextRef.current.state === 'closed') {
-        inputAudioContextRef.current = new AudioContext({ sampleRate: 16000 }); 
+      if (inputAudioContextRef.current?.state === 'suspended') {
+        await inputAudioContextRef.current.resume();
       }
       const stream = await navigator.mediaDevices.getUserMedia({ audio: { sampleRate: 16000 } });
       microphoneStreamRef.current = stream; 
@@ -77,36 +153,65 @@ const App: React.FC = () => {
   const totalSentencesReadRef = useRef<number>(0);
   const difficultPhonemesAcrossSession = useRef<Set<string>>(new Set());
 
-  const handleSessionEnd = useCallback(async () => {
-    setIsLoading(true);
-    if (isRecording) {
-      if (scriptProcessorRef.current) {
-        scriptProcessorRef.current.disconnect();
-        scriptProcessorRef.current.onaudioprocess = null;
-        scriptProcessorRef.current = null;
-      }
-      if (microphoneStreamRef.current) {
-        microphoneStreamRef.current.getTracks().forEach(track => track.stop());
-        microphoneStreamRef.current = null;
-      }
-      if (inputAudioContextRef.current && inputAudioContextRef.current.state !== 'closed') {
-        await inputAudioContextRef.current.close();
-      }
-      setIsRecording(false);
+  const cleanupAudioResources = useCallback(async () => {
+    if (audioWorkletNodeRef.current) {
+      audioWorkletNodeRef.current.port.onmessage = null;
+      audioWorkletNodeRef.current.disconnect();
+      audioWorkletNodeRef.current = null;
     }
-    
     if (microphoneStreamRef.current) {
       microphoneStreamRef.current.getTracks().forEach(track => track.stop());
       microphoneStreamRef.current = null;
     }
-    if (inputAudioContextRef.current && inputAudioContextRef.current.state !== 'closed') {
-      await inputAudioContextRef.current.close();
-      inputAudioContextRef.current = null;
+    playingAudioSourcesRef.current.forEach(source => source.stop());
+    playingAudioSourcesRef.current.clear();
+    nextAudioStartTimeRef.current = 0; // Reset audio start time
+    audioDataBufferRef.current = []; // Clear recorded audio data
+    if (timerRef.current) {
+      window.clearInterval(timerRef.current);
+      timerRef.current = null;
     }
+    // Do not close AudioContexts if they can be reused. Just disconnect nodes.
+  }, []);
+
+  const handleExitSession = useCallback(async () => {
+    setIsLoading(true);
+    await cleanupAudioResources();
+    
+    // Reset all session-related states
+    setSessionState(SessionState.CHOOSING_DURATION);
+    setSessionDurationMinutes(5);
+    setTimeLeft(0);
+    setIsRecording(false);
+    setIsSpeaking(false);
+    setIsLoading(false);
+    setCurrentSentenceIndex(0);
+    setRecognitionAttemptCount(0);
+    setErrorDetailsForDisplay([]);
+    setSpokenTranscription('');
+    setReportData(null);
+    setMicrophoneError(null);
+    setShouldEndSession(false);
+    setCurrentSentenceFeedback('');
+    setChosenSentenceType(SentenceType.CONVERSATIONAL);
+    setCurrentSentenceList([]);
+    errorHistoryRef.current = [];
+    totalSentencesReadRef.current = 0;
+    difficultPhonemesAcrossSession.current.clear();
+    
+    setIsLoading(false);
+  }, [cleanupAudioResources]);
+
+  const handleSessionEnd = useCallback(async () => {
+    setIsLoading(true);
+    
+    // Clean up audio resources if still active
+    await cleanupAudioResources(); // Use the common cleanup function
 
     const totalErrors = errorHistoryRef.current.reduce((acc, curr) => acc + curr.errors.length, 0);
 
     let difficultSoundsAnalysis = "Your practice session has concluded. "; // More neutral opening
+    // Fix: Corrected typo from `difficultPhiframesAcrossSession` to `difficultPhonemesAcrossSession`
     if (difficultPhonemesAcrossSession.current.size > 0) {
       difficultSoundsAnalysis += "Some sounds that were identified as areas for practice include: "; // Changed phrasing
       difficultSoundsAnalysis += Array.from(difficultPhonemesAcrossSession.current).map(s => `'${s}'`).join(', ');
@@ -116,7 +221,13 @@ const App: React.FC = () => {
     }
 
     const reportSummary = `Session Duration: ${sessionDurationMinutes} minutes. Total Sentences Read: ${totalSentencesReadRef.current}. Total Errors Detected: ${totalErrors}. ${difficultSoundsAnalysis}`;
-    const qualitativeAnalysis = await geminiService.generateQualitativeAnalysis(reportSummary);
+    let qualitativeAnalysis = "No qualitative analysis could be generated.";
+    try {
+      qualitativeAnalysis = await geminiService.generateQualitativeAnalysis(reportSummary);
+    } catch (error) {
+      console.error("Error generating qualitative analysis during session end:", error);
+      qualitativeAnalysis = "I couldn't generate a qualitative analysis right now, but you did a great job practicing!";
+    }
 
     const generatedReport: ReportData = {
       sessionDurationMinutes,
@@ -130,7 +241,7 @@ const App: React.FC = () => {
     setReportData(generatedReport);
     setSessionState(SessionState.REPORT);
     setIsLoading(false);
-  }, [sessionDurationMinutes, isRecording, chosenSentenceType, setSessionState]);
+  }, [sessionDurationMinutes, chosenSentenceType, setSessionState, cleanupAudioResources]);
 
   useEffect(() => {
     if (timerRef.current) {
@@ -226,6 +337,10 @@ const App: React.FC = () => {
       }
     } catch (error) {
       console.error("Failed to read aloud:", error);
+      // Provide a simple audible fallback if TTS fails
+      const fallbackSpeech = "I apologize, I'm unable to speak right now.";
+      const utterance = new SpeechSynthesisUtterance(fallbackSpeech);
+      window.speechSynthesis.speak(utterance);
     } finally {
       setIsSpeaking(false);
     }
@@ -281,7 +396,6 @@ const App: React.FC = () => {
 
     } catch (error) {
       console.error("Error during speech processing or analysis:", error);
-      const errorMessage = (error as Error).message;
       const genericError = `I had a little trouble hearing that. Please ensure your microphone is working and try again!`;
       setMicrophoneError(genericError);
       await handleReadAloud(genericError, FAST_SPEECH_RATE);
@@ -306,17 +420,20 @@ const App: React.FC = () => {
     }
 
     if (isRecording) {
-      if (scriptProcessorRef.current) {
-        scriptProcessorRef.current.disconnect();
-        scriptProcessorRef.current.onaudioprocess = null;
-        scriptProcessorRef.current = null;
+      // Stop recording
+      if (audioWorkletNodeRef.current) {
+        audioWorkletNodeRef.current.port.onmessage = null; // Clear message handler
+        audioWorkletNodeRef.current.disconnect();
+        audioWorkletNodeRef.current = null;
       }
       if (microphoneStreamRef.current) {
         microphoneStreamRef.current.getTracks().forEach(track => track.stop());
         microphoneStreamRef.current = null;
       }
-      if (inputAudioContextRef.current && inputAudioContextRef.current.state !== 'closed') {
-        await inputAudioContextRef.current.close();
+      // Do NOT close inputAudioContext here. Keep it alive for subsequent recordings.
+      // Resume it if it was suspended during inactivity (e.g. by iOS Safari)
+      if (inputAudioContextRef.current.state === 'suspended') {
+        await inputAudioContextRef.current.resume();
       }
 
       setIsRecording(false);
@@ -326,7 +443,7 @@ const App: React.FC = () => {
         await handleReadAloud(fallbackFeedback, FAST_SPEECH_RATE);
         setCurrentSentenceFeedback(fallbackFeedback);
         setRecognitionAttemptCount((prev) => prev + 1);
-        setIsLoading(false);
+        setIsLoading(false); // Ensure loading is off
         return;
       }
 
@@ -344,25 +461,35 @@ const App: React.FC = () => {
       await processRecordedAudio(wavBlob);
 
     } else {
+      // Start recording
       setSpokenTranscription('');
       setErrorDetailsForDisplay([]);
       setCurrentSentenceFeedback('');
       
       const stream = await requestMicrophone();
       if (stream && inputAudioContextRef.current) {
+        if (inputAudioContextRef.current.state === 'suspended') {
+          await inputAudioContextRef.current.resume();
+        }
         audioDataBufferRef.current = []; 
         
         const source = inputAudioContextRef.current.createMediaStreamSource(stream);
-        const scriptProcessor = inputAudioContextRef.current.createScriptProcessor(4096, 1, 1); 
-        scriptProcessor.onaudioprocess = (event) => {
-          const inputData = event.inputBuffer.getChannelData(0);
-          audioDataBufferRef.current.push(new Float32Array(inputData)); 
+        const workletNode = new AudioWorkletNode(
+          inputAudioContextRef.current,
+          'audio-recorder-processor',
+          { processorOptions: { sampleRate: 16000 } }
+        );
+        
+        workletNode.port.onmessage = (event) => {
+          if (event.data instanceof Float32Array) {
+            audioDataBufferRef.current.push(new Float32Array(event.data)); // Push a copy
+          }
         };
 
-        source.connect(scriptProcessor);
-        scriptProcessor.connect(inputAudioContextRef.current.destination); 
+        source.connect(workletNode);
+        workletNode.connect(inputAudioContextRef.current.destination); 
 
-        scriptProcessorRef.current = scriptProcessor;
+        audioWorkletNodeRef.current = workletNode;
         microphoneStreamRef.current = stream; 
 
         setIsRecording(true);
@@ -503,7 +630,7 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-100">
-      <Header />
+      <Header sessionState={sessionState} onExitSession={handleExitSession} />
       <main className="flex-grow flex items-center justify-center p-4">
         {renderContent()}
       </main>

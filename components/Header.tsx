@@ -1,8 +1,15 @@
 // components/Header.tsx
 import React from 'react';
-import { APP_NAME, APP_SLOGAN, PRIMARY_PURPLE, TEXT_WHITE } from '../constants';
+import { APP_NAME, APP_SLOGAN, PRIMARY_PURPLE, TEXT_WHITE, BUTTON_SECONDARY_BLUE } from '../constants';
+import { SessionState } from '../types';
+import Button from './Button'; // Import the Button component
 
-const Header: React.FC = () => {
+interface HeaderProps {
+  sessionState: SessionState;
+  onExitSession: () => void;
+}
+
+const Header: React.FC<HeaderProps> = ({ sessionState, onExitSession }) => {
   return (
     <header className={`${PRIMARY_PURPLE} p-4 shadow-md w-full`}>
       <div className="container mx-auto flex items-center justify-between">
@@ -18,11 +25,13 @@ const Header: React.FC = () => {
             <p className={`text-sm md:text-base italic ${TEXT_WHITE}`}>{APP_SLOGAN}</p>
           </div>
         </div>
-        {/* Navigation links (simplified for this app, can be expanded) */}
+        {/* Only show Exit Session button if in PRACTICE state */}
         <nav className="hidden md:flex space-x-6">
-          <a href="#" className={`font-semibold ${TEXT_WHITE} hover:text-gray-300 transition-colors`}>Home</a>
-          <a href="#" className={`font-semibold ${TEXT_WHITE} hover:text-gray-300 transition-colors`}>About</a>
-          <a href="#" className={`font-semibold ${TEXT_WHITE} hover:text-gray-300 transition-colors`}>Contact</a>
+          {sessionState === SessionState.PRACTICE && (
+            <Button variant="secondary" onClick={onExitSession} className="px-4 py-2 text-base">
+              Exit Session
+            </Button>
+          )}
         </nav>
       </div>
     </header>
