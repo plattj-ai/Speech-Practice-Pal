@@ -7,13 +7,9 @@ import ReadAloudButton from './components/ReadAloudButton';
 import LoadingSpinner from './components/LoadingSpinner';
 import FeedbackDisplay from './components/FeedbackDisplay';
 import ReportModal from './components/ReportModal';
-import { SessionState, ErrorDetail, ReportData, DetailedError, AnalysisResult, SentenceType, PhonemeType } from './types'; 
+import { SessionState, ErrorDetail, ReportData, DetailedError, AnalysisResult, SentenceType, PhonemeType, DifficultyLevel } from './types'; 
 import { 
-  TONGUE_TWISTER_SENTENCES, 
-  CONVERSATIONAL_SENTENCES, 
-  L_SOUND_SENTENCES,
-  R_SOUND_SENTENCES,
-  S_SOUND_SENTENCES,
+  SENTENCE_LIBRARY,
   BUTTON_PRIMARY_PURPLE, 
   BUTTON_SECONDARY_BLUE, 
   PRIMARY_PURPLE, 
@@ -43,9 +39,10 @@ registerProcessor('audio-recorder-processor', AudioRecorderProcessor);
 `;
 
 const App: React.FC = () => {
-  const [sessionState, setSessionState] = useState<SessionState>(SessionState.CHOOSING_DURATION);
+  const [sessionState, setSessionState] = useState<SessionState>(SessionState.CHOOSING_DIFFICULTY);
   const [totalSentencesInSession, setTotalSentencesInSession] = useState<number>(10);
   const [targetPhoneme, setTargetPhoneme] = useState<PhonemeType>(PhonemeType.MIX);
+  const [difficultyLevel, setDifficultyLevel] = useState<DifficultyLevel>('A');
   const [isRecording, setIsRecording] = useState<boolean>(false);
   const [isSpeaking, setIsSpeaking] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -149,7 +146,7 @@ const App: React.FC = () => {
   const handleExitSession = useCallback(async () => {
     setIsLoading(true);
     await cleanupAudioResources();
-    setSessionState(SessionState.CHOOSING_DURATION);
+    setSessionState(SessionState.CHOOSING_DIFFICULTY);
     setIsLoading(false);
   }, [cleanupAudioResources]);
 
@@ -165,7 +162,7 @@ const App: React.FC = () => {
     const reportSummary = `Total Sentences: ${totalSentencesInSession}. Errors: ${totalErrors}. Target Sound: ${targetPhoneme}. ${difficultSoundsAnalysis}`;
     let qualitativeAnalysis = "The student completed targeted practice.";
     try {
-      qualitativeAnalysis = await geminiService.generateQualitativeAnalysis(reportSummary);
+      qualitativeAnalysis = await geminiService.generateQualitativeAnalysis(reportSummary, difficultyLevel);
     } catch (error) {
       console.error(error);
     }
@@ -178,10 +175,11 @@ const App: React.FC = () => {
       qualitativeAnalysis,
       sentenceType: chosenSentenceType,
       targetPhoneme,
+      difficultyLevel,
     });
     setSessionState(SessionState.REPORT);
     setIsLoading(false);
-  }, [totalSentencesInSession, chosenSentenceType, targetPhoneme, cleanupAudioResources]);
+  }, [totalSentencesInSession, chosenSentenceType, targetPhoneme, difficultyLevel, cleanupAudioResources]);
 
   useEffect(() => {
     if (sessionState === SessionState.PRACTICE && totalSentencesReadRef.current >= totalSentencesInSession) {
@@ -204,11 +202,20 @@ const App: React.FC = () => {
     setIsLoading(true);
     
     let baseSentences: string[] = [];
-    if (phoneme === PhonemeType.L) baseSentences = L_SOUND_SENTENCES;
-    else if (phoneme === PhonemeType.R) baseSentences = R_SOUND_SENTENCES;
-    else if (phoneme === PhonemeType.S) baseSentences = S_SOUND_SENTENCES;
-    else {
-      baseSentences = type === SentenceType.CONVERSATIONAL ? CONVERSATIONAL_SENTENCES : TONGUE_TWISTER_SENTENCES;
+    const diffLibrary = SENTENCE_LIBRARY[difficultyLevel];
+
+    if (phoneme === PhonemeType.MIX) {
+      // Collect all sentences for the selected difficulty level
+      baseSentences = [
+        ...diffLibrary[PhonemeType.L],
+        ...diffLibrary[PhonemeType.R],
+        ...diffLibrary[PhonemeType.S],
+        ...diffLibrary[SentenceType.CONVERSATIONAL],
+        ...diffLibrary[SentenceType.TONGUE_TWISTER]
+      ];
+    } else {
+      // Use specific phoneme or sentence type list
+      baseSentences = diffLibrary[phoneme] || diffLibrary[type] || diffLibrary[PhonemeType.L];
     }
 
     setCurrentSentenceList(baseSentences);
@@ -222,7 +229,7 @@ const App: React.FC = () => {
     } else {
       setSessionState(SessionState.MICROPHONE_DENIED);
     }
-  }, [requestMicrophone]);
+  }, [requestMicrophone, difficultyLevel]);
 
   const currentSentence = currentSentenceList[currentSentenceIndex];
 
@@ -276,7 +283,7 @@ const App: React.FC = () => {
         reader.readAsDataURL(audioBlob);
       });
       const audioBase64 = await base64Promise;
-      const analysisResult = await geminiService.analyzePronunciation(currentSentence, audioBase64, targetPhoneme);
+      const analysisResult = await geminiService.analyzePronunciation(currentSentence, audioBase64, targetPhoneme, difficultyLevel);
       setSpokenTranscription(analysisResult.spokenTranscript);
       analysisResult.overallDifficultPhonemes.forEach(p => difficultPhonemesAcrossSession.current.add(p));
       setErrorDetailsForDisplay(analysisResult.detailedErrors);
@@ -299,7 +306,7 @@ const App: React.FC = () => {
       setIsLoading(false);
       setLoadingMessage("Analyzing...");
     }
-  }, [currentSentence, recognitionAttemptCount, targetPhoneme, handleReadAloud, moveToNextSentence]);
+  }, [currentSentence, recognitionAttemptCount, targetPhoneme, difficultyLevel, handleReadAloud, moveToNextSentence]);
 
   const handleToggleRecord = useCallback(async () => {
     if (isRecording) {
@@ -344,17 +351,42 @@ const App: React.FC = () => {
 
   const handleCloseReport = useCallback(() => {
     setReportData(null);
-    setSessionState(SessionState.CHOOSING_DURATION); 
+    setSessionState(SessionState.CHOOSING_DIFFICULTY); 
   }, []);
 
   const renderContent = () => {
     switch (sessionState) {
+      case SessionState.CHOOSING_DIFFICULTY:
+        return (
+          <div className="flex flex-col items-center justify-center p-8 bg-white rounded-2xl shadow-2xl max-w-2xl mx-auto animate-fadeIn text-center">
+            <h2 className="text-4xl font-black text-purple-900 mb-2">Welcome!</h2>
+            <p className="text-gray-600 mb-8 font-medium">Select your Difficulty Level to begin.</p>
+            
+            <div className="grid grid-cols-3 sm:grid-cols-4 gap-4 w-full">
+              {['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L'].map((level) => (
+                <button 
+                  key={level}
+                  onClick={() => { setDifficultyLevel(level as DifficultyLevel); setSessionState(SessionState.CHOOSING_DURATION); }}
+                  className="group flex flex-col items-center justify-center bg-purple-50 hover:bg-purple-600 p-4 rounded-xl transition-all duration-300 border-2 border-purple-100 hover:border-purple-600 shadow-sm"
+                >
+                  <span className="text-2xl font-bold text-purple-800 group-hover:text-white">{level}</span>
+                  <span className="text-[10px] uppercase font-bold text-purple-400 group-hover:text-purple-100">Level</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        );
+
       case SessionState.CHOOSING_DURATION:
         return (
           <div className="flex flex-col items-center justify-center p-6 bg-white rounded-lg shadow-xl max-w-2xl mx-auto animate-fadeIn overflow-y-auto">
+            <div className="flex items-center space-x-2 mb-6">
+              <button onClick={() => setSessionState(SessionState.CHOOSING_DIFFICULTY)} className="text-purple-600 hover:underline text-sm font-bold">← Back to Levels</button>
+              <span className="text-gray-300">|</span>
+              <span className="text-xs font-bold uppercase tracking-widest text-purple-400">Difficulty Level {difficultyLevel}</span>
+            </div>
             <h2 className={`text-3xl font-bold ${TEXT_DARK} mb-8 text-center`}>Practice Setup</h2>
             
-            {/* Section 1: Target Sound */}
             <div className="w-full mb-8">
               <p className="text-sm font-bold uppercase tracking-wider text-gray-500 mb-3 text-center">1. Choose Your Sound</p>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -365,7 +397,6 @@ const App: React.FC = () => {
               </div>
             </div>
 
-            {/* Section 2: Style */}
             <div className="w-full mb-8">
               <p className="text-sm font-bold uppercase tracking-wider text-gray-500 mb-3 text-center">2. Choose Your Style</p>
               <div className="flex flex-col md:flex-row gap-3">
@@ -374,7 +405,6 @@ const App: React.FC = () => {
               </div>
             </div>
 
-            {/* Section 3: Length */}
             <div className="w-full mb-10">
               <p className="text-sm font-bold uppercase tracking-wider text-gray-500 mb-3 text-center">3. Session Length</p>
               <div className="flex flex-col md:flex-row gap-3">
@@ -393,11 +423,16 @@ const App: React.FC = () => {
           <div className="flex flex-col items-center justify-between h-full w-full p-4 md:p-8">
             <div className="flex flex-col items-center">
                <p className={`text-lg font-medium ${ACCENT_BLUE}`}>Attempt: {recognitionAttemptCount + 1} / 3</p>
-               {targetPhoneme !== PhonemeType.MIX && (
-                 <span className="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded-full font-bold mt-1">
-                   Target: /{targetPhoneme.toLowerCase()}/
+               <div className="flex space-x-2 mt-1">
+                 {targetPhoneme !== PhonemeType.MIX && (
+                   <span className="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded-full font-bold">
+                     Target: /{targetPhoneme.toLowerCase()}/
+                   </span>
+                 )}
+                 <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full font-bold">
+                   Level {difficultyLevel}
                  </span>
-               )}
+               </div>
             </div>
             <div className="flex-grow flex items-center justify-center w-full max-w-4xl bg-purple-50 rounded-lg p-6 shadow-inner animate-fadeIn relative overflow-hidden my-6">
               {isLoading && !isRecording ? ( 
@@ -424,7 +459,7 @@ const App: React.FC = () => {
           <div className="flex flex-col items-center justify-center p-6 bg-white rounded-lg shadow-xl max-w-lg mx-auto text-center">
             <h2 className="text-3xl font-bold text-red-600 mb-4">Microphone Access Required</h2>
             <p className="text-lg mb-6">{microphoneError || "Enable microphone access in settings."}</p>
-            <Button onClick={() => setSessionState(SessionState.CHOOSING_DURATION)} variant="secondary">Go Back</Button>
+            <Button onClick={() => setSessionState(SessionState.CHOOSING_DIFFICULTY)} variant="secondary">Go Back</Button>
           </div>
         );
       default: return null;

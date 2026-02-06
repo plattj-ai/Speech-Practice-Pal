@@ -66,11 +66,12 @@ export const generateBadgeImage = async (reportData: ReportData): Promise<string
   const dateStr = new Date().toLocaleDateString();
   ctx.fillText(`Date: ${dateStr}`, 120, 460);
   ctx.fillText(`Sentences Practiced: ${reportData.totalSentencesRead}`, 120, 500);
+  ctx.fillText(`Difficulty Level: ${reportData.difficultyLevel}`, 120, 540);
   
   const targetText = reportData.targetPhoneme && reportData.targetPhoneme !== 'MIX' 
     ? `Target Sound: /${reportData.targetPhoneme.toLowerCase()}/` 
     : 'Target: General Practice';
-  ctx.fillText(targetText, 120, 540);
+  ctx.fillText(targetText, 120, 580);
 
   // 5. Success Message
   ctx.textAlign = 'right';

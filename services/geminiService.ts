@@ -1,13 +1,13 @@
 // services/geminiService.ts
 import { GoogleGenAI, Modality, Chat, GenerateContentResponse, Type } from "@google/genai";
 import { AI_PERSONA_PROMPT, VOICE_NAME, BASE_SPEECH_RATE } from '../constants';
-import { AnalysisResult, DetailedError, PhonemeType } from '../types';
+import { AnalysisResult, DetailedError, PhonemeType, DifficultyLevel } from '../types';
 import { decodeAudioData, decodeBase64 } from './audioService';
 
 interface GeminiServiceInstance {
   readSentence: (text: string, outputContext: AudioContext, speed?: number) => Promise<AudioBuffer | undefined>;
-  analyzePronunciation: (expectedSentence: string, audioBase64: string, targetPhoneme?: PhonemeType) => Promise<AnalysisResult>;
-  generateQualitativeAnalysis: (reportSummary: string) => Promise<string>;
+  analyzePronunciation: (expectedSentence: string, audioBase64: string, targetPhoneme?: PhonemeType, difficultyLevel?: DifficultyLevel) => Promise<AnalysisResult>;
+  generateQualitativeAnalysis: (reportSummary: string, difficultyLevel?: DifficultyLevel) => Promise<string>;
 }
 
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
@@ -47,7 +47,7 @@ const createGeminiService = (): GeminiServiceInstance => {
     }
   };
 
-  const analyzePronunciation = async (expectedSentence: string, audioBase64: string, targetPhoneme?: PhonemeType): Promise<AnalysisResult> => {
+  const analyzePronunciation = async (expectedSentence: string, audioBase64: string, targetPhoneme?: PhonemeType, difficultyLevel: DifficultyLevel = 'A'): Promise<AnalysisResult> => {
     try {
       const phonemeContext = targetPhoneme && targetPhoneme !== PhonemeType.MIX 
         ? `The student is specifically working on the /${targetPhoneme.toLowerCase()}/ sound today. Pay extra attention to its articulation.` 
@@ -65,7 +65,7 @@ const createGeminiService = (): GeminiServiceInstance => {
                 }
               },
               {
-                text: `STRICT PHONETIC ASSESSMENT: The student was asked to say: "${expectedSentence}". 
+                text: `STRICT PHONETIC ASSESSMENT for Difficulty Level ${difficultyLevel} student: The student was asked to say: "${expectedSentence}". 
                 ${phonemeContext}
                 Analyze the audio for phonetic accuracy. 
                 Identify substitutions, omissions, distortions, or additions.
@@ -79,15 +79,15 @@ const createGeminiService = (): GeminiServiceInstance => {
             ACT AS A CLINICAL PHONETICIAN.
             
             YOUR PROTOCOL:
-            1. Auditory Analysis: Listen for phonological processes (Gliding, Fronting, Stopping, Lisping).
-            2. Thinking Phase: Use your thinking budget to reason through acoustic features to distinguish similar sounds.
+            1. Auditory Analysis: Listen for phonological processes.
+            2. Thinking Phase: Reason through acoustic features.
             3. Zero Autocorrect: Transcribe EXACTLY what was said.
             
             RESPONSE REQUIREMENTS:
             - spokenTranscript: Literal transcription.
             - detailedErrors: word-by-word analysis.
             - overallDifficultPhonemes: patterns found.
-            - overallFeedback: Supportive response from Speech Pal.
+            - overallFeedback: Supportive response from Speech Pal tailored to Difficulty Level ${difficultyLevel}.
           `,
           thinkingConfig: {
             thinkingBudget: 2048
@@ -138,13 +138,13 @@ const createGeminiService = (): GeminiServiceInstance => {
     }
   };
 
-  const generateQualitativeAnalysis = async (reportSummary: string): Promise<string> => {
+  const generateQualitativeAnalysis = async (reportSummary: string, difficultyLevel: DifficultyLevel = 'A'): Promise<string> => {
     try {
       const response = await ai.models.generateContent({
         model: 'gemini-3-flash-preview',
-        contents: [{ parts: [{ text: reportSummary }] }],
+        contents: [{ parts: [{ text: `Summary of session for Difficulty Level ${difficultyLevel} student: ${reportSummary}` }] }],
         config: {
-          systemInstruction: AI_PERSONA_PROMPT + `\n\nGenerate a professional speech-language summary.`,
+          systemInstruction: AI_PERSONA_PROMPT + `\n\nGenerate a professional speech-language summary suitable for a Level ${difficultyLevel} student's record.`,
           temperature: 0.7,
         },
       });

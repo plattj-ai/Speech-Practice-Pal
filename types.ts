@@ -2,6 +2,7 @@
 
 export enum SessionState {
   IDLE = 'IDLE',
+  CHOOSING_DIFFICULTY = 'CHOOSING_DIFFICULTY',
   CHOOSING_DURATION = 'CHOOSING_DURATION',
   PRACTICE = 'PRACTICE',
   REPORT = 'REPORT',
@@ -20,6 +21,8 @@ export enum PhonemeType {
   S = 'S',
   MIX = 'MIX',
 }
+
+export type DifficultyLevel = 'A' | 'B' | 'C' | 'D' | 'E' | 'F' | 'G' | 'H' | 'I' | 'J' | 'K' | 'L';
 
 export interface DetailedError {
   word: string;
@@ -52,6 +55,7 @@ export interface ReportData {
   qualitativeAnalysis: string;
   sentenceType: SentenceType; 
   targetPhoneme?: PhonemeType;
+  difficultyLevel: DifficultyLevel;
 }
 
 export interface AudioBlob {

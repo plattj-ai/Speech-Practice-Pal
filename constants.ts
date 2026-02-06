@@ -1,87 +1,104 @@
 // constants.ts
-import { SentenceType } from './types'; 
+import { SentenceType, DifficultyLevel, PhonemeType } from './types'; 
 
-export const L_SOUND_SENTENCES: string[] = [
-  "Little Lily loves lucky yellow lollipops.",
-  "Look at the lovely blue lake in the light.",
-  "The lazy lion lay on the long leaf.",
-  "Please fill the glass with cool lemonade.",
-  "Leo played with his yellow ball all day long.",
-  "Large ladybugs like to leap on little leaves.",
-  "The lovely light fell on the lonely hills.",
-  "Let's look for lucky shells along the lake."
-];
-
-export const R_SOUND_SENTENCES: string[] = [
-  "Red rabbits run round the green garden.",
-  "Robert read a really great story about rockets.",
-  "The river runs right past the bright red rock.",
-  "Barry brought brown bread for the bright bird.",
-  "Are you ready to race on the red track?",
-  "Rainy roads require really careful driving.",
-  "The roaring tiger ran through the dark forest.",
-  "Richie wrote a report about rare reptiles."
-];
-
-export const S_SOUND_SENTENCES: string[] = [
-  "Six silly seals swam in the salty sea.",
-  "Sam saw seven silver stars in the sky.",
-  "The sun is shining on the soft sand.",
-  "Please pass the sweet strawberry soup.",
-  "Sarah says she saw some small snakes.",
-  "Listen to the whistling wind in the grass.",
-  "The fast bus stops at the street corner.",
-  "Step on the grass and see the spring flowers."
-];
-
-export const CONVERSATIONAL_SENTENCES: string[] = [
-  "What interesting stories did you read at school today?",
-  "Tell me about your favorite playful animal.",
-  "What is your favorite fresh fruit, and why do you like it so much?",
-  "If you could have any special superpower, what would it be?",
-  "Describe your strong and brave best friend to me.",
-  "What do you like to do on bright and sunny weekends?",
-  "Where do you prefer to travel for your next great adventure?",
-  "What's the thrilling and funniest thing that happened to you recently?",
-  "If you built a tall treehouse, what would it look like?",
-  "Tell me about a game you particularly love to play.",
-  "What's something new and truly interesting you learned this week?",
-  "Who is your favorite strong and brave character in a book or movie?",
-  "What makes you feel truly happy and peaceful?",
-  "How do you proudly help out at home with chores?",
-  "If you could talk to all sorts of animals, what would it ask them?",
-  "What's your favorite sunny season, and why do you love it?",
-  "Describe your truly spectacular and perfect day.",
-  "What do you want to be when you grow up and help people?",
-  "Tell me about a challenging time when you were truly brave.",
-  "What is something you are truly great at and practice regularly?",
-];
-
-export const TONGUE_TWISTER_SENTENCES: string[] = [
-  "She sells seashells by the seashore.",
-  "Peter Piper picked a peck of pickled peppers.",
-  "The cat sat on the mat with a hat.",
-  "Red lorry, yellow lorry.",
-  "A big black bug bit a big black dog on his big black nose.",
-  "Fuzzy Wuzzy was a bear, Fuzzy Wuzzy had no hair.",
-  "Unique New York, unique New York.",
-  "Six sleek swans swam swiftly southwards.",
-  "I scream, you scream, we all scream for ice cream.",
-  "Toy boat, toy boat, toy boat.",
-  "The thirty-three thieves thought that they thrilled the throne throughout Thursday.",
-  "Fresh fried fish, fish fresh fried, fried fish fresh, fish fried fresh.",
-  "Betty Botter bought some butter, but she said the butter’s bitter.",
-  "How can a clam cram in a clean cream can?",
-  "Strict strong speech students usually skip silly subjects.",
-  "Wayne went to Wales to watch walruses.",
-  "Can you can a can as a canner can can a can?",
-  "Which witch wished which wicked wish?",
-  "He threw three free throws.",
-  "Imagine an imaginary menagerie manager managing an imaginary menagerie.",
-];
+/**
+ * SENTENCE_LIBRARY is indexed by DifficultyLevel (A-L).
+ * Each level contains sentences roughly mapped to Lexile scores and grade-level complexity.
+ */
+export const SENTENCE_LIBRARY: Record<string, Record<string, string[]>> = {
+  'A': { // Level 1 equivalent
+    [PhonemeType.L]: ["Look at the blue lake.", "Leo likes the yellow ball.", "A little leaf fell down."],
+    [PhonemeType.R]: ["Red rabbits run fast.", "The river is cold.", "Read a red book."],
+    [PhonemeType.S]: ["Sam saw a star.", "The sun is hot.", "Six seals swim."],
+    [SentenceType.CONVERSATIONAL]: ["How are you today?", "What is your name?", "I like to play."],
+    [SentenceType.TONGUE_TWISTER]: ["Red lorry, yellow lorry.", "Toy boat, toy boat."]
+  },
+  'B': { // Level 2 equivalent
+    [PhonemeType.L]: ["The ladybug sits on the leaf.", "Lily loves her blue lollipop.", "Let's play with the blocks."],
+    [PhonemeType.R]: ["Ready to run a race?", "Robert has a red robot.", "Rain falls on the green grass."],
+    [PhonemeType.S]: ["Six silly snakes slide.", "The school bus is big.", "Small stars shine in the sky."],
+    [SentenceType.CONVERSATIONAL]: ["What is your favorite toy?", "Where do you live?", "Who is your best friend?"],
+    [SentenceType.TONGUE_TWISTER]: ["She sells seashells.", "Fuzzy Wuzzy was a bear."]
+  },
+  'C': { // Level 3 equivalent
+    [PhonemeType.L]: ["Please fill the glass with milk.", "Lucky Lucy found a shiny coin.", "Large lions live in the wild."],
+    [PhonemeType.R]: ["Rivers run around the rocks.", "Barry brought a brown basket.", "Richie reads a really long story."],
+    [PhonemeType.S]: ["Silly seals swam in the sea.", "Sarah saw seven silver spoons.", "The sun shines on the soft sand."],
+    [SentenceType.CONVERSATIONAL]: ["Tell me about your school.", "What do you like to eat?", "Do you have any pets?"],
+    [SentenceType.TONGUE_TWISTER]: ["Peter Piper picked peppers.", "Six sleek swans swam south."]
+  },
+  'D': { // Level 4 equivalent
+    [PhonemeType.L]: ["Leaves fall slowly from the trees.", "The lovely light glows in the night.", "Leo learned to play the flute."],
+    [PhonemeType.R]: ["Read about the rare red reptiles.", "A roaring tiger ran through the forest.", "Remember to rest after the race."],
+    [PhonemeType.S]: ["Seven small stars spin in space.", "Stay safe on the slippery slope.", "The snake slides through the grass."],
+    [SentenceType.CONVERSATIONAL]: ["What is the best movie you saw?", "How do you help at home?", "Describe a fun summer day."],
+    [SentenceType.TONGUE_TWISTER]: ["Unique New York.", "I scream for ice cream."]
+  },
+  'E': { // Level 5 equivalent
+    [PhonemeType.L]: ["Learning a language takes long hours.", "The local library has lovely books.", "Luckily, the lock was not closed."],
+    [PhonemeType.R]: ["Recent reports reveal rare artifacts.", "Robots replace humans in some jobs.", "The road requires regular repairs."],
+    [PhonemeType.S]: ["Several students shared some snacks.", "Success starts with small steps.", "Science shows how the stars shine."],
+    [SentenceType.CONVERSATIONAL]: ["What is your favorite subject?", "If you were a king, what would you do?", "Tell me about a great adventure."],
+    [SentenceType.TONGUE_TWISTER]: ["Betty Botter bought butter.", "How can a clam cram in a can?"]
+  },
+  'F': { // Level 6 equivalent
+    [PhonemeType.L]: ["Logic helps us solve large puzzles.", "Local legends live on for centuries.", "The liquid leaked onto the laboratory floor."],
+    [PhonemeType.R]: ["Rigorous research requires real dedication.", "Regulations restrict random urban growth.", "Renewable resources reduce our footprint."],
+    [PhonemeType.S]: ["Societies strive for social stability.", "Sustained study yields significant results.", "Sophisticated software saves several hours."],
+    [SentenceType.CONVERSATIONAL]: ["What inspires you to work hard?", "Discuss a book that changed your mind.", "How do you define personal success?"],
+    [SentenceType.TONGUE_TWISTER]: ["Strict strong speech students skip silly subjects.", "Wayne went to Wales to watch walruses."]
+  },
+  'G': { // Level 7 equivalent
+    [PhonemeType.L]: ["Legal liability likely limits local loans.", "Longitudinal studies look at long periods.", "Legislative levels look for lasting logic."],
+    [PhonemeType.R]: ["Remarkable revelations regarding rare rocks.", "Rhetorical reasons require rich resources.", "Rapid reconstruction restores regular roads."],
+    [PhonemeType.S]: ["Systemic shifts suggest social stress.", "Statistical significance shows strong signs.", "Strategic stamina supports superior success."],
+    [SentenceType.CONVERSATIONAL]: ["Evaluate the impact of modern technology.", "Explain a complex scientific concept.", "Compare two different historical eras."],
+    [SentenceType.TONGUE_TWISTER]: ["Imagine an imaginary menagerie manager managing a menagerie.", "Thirty-three thieves thrilled the throne."]
+  },
+  'H': { // Level 8 equivalent
+    [PhonemeType.L]: ["Literacy levels look largely like local life.", "Logical labels list localized legal limits.", "Liberal labor laws look like local liberties."],
+    [PhonemeType.R]: ["Radical reforms rarely reach real results.", "Reliable research regarding rare radiation.", "Refining raw resources requires real rigor."],
+    [PhonemeType.S]: ["Sustaining success suggests superior strategy.", "Specific standards support solid science.", "Social structures support stable systems."],
+    [SentenceType.CONVERSATIONAL]: ["How do economic trends affect daily life?", "Analyze the themes in a classic novel.", "Defend your position on a current event."],
+    [SentenceType.TONGUE_TWISTER]: ["Which witch wished which wicked wish?", "He threw three free throws."]
+  },
+  'I': { // Level 9 equivalent
+    [PhonemeType.L]: ["Lexical limitations look like literal loss.", "Logistical levels limit longitudinal logic.", "Legitimate labor look like local law."],
+    [PhonemeType.R]: ["Recurrent research regarding radial rays.", "Reciprocal relations require robust respect.", "Resilient regions resist rapid recession."],
+    [PhonemeType.S]: ["Systematic scrutiny suggests specific flaws.", "Substantial subsidies support small shops.", "Synchronous systems show superior speed."],
+    [SentenceType.CONVERSATIONAL]: ["Synthesize multiple sources of information.", "Predict the future of space exploration.", "Critique a famous piece of architecture."],
+    [SentenceType.TONGUE_TWISTER]: ["A big black bug bit a big black dog.", "The thirty-three thieves thought."]
+  },
+  'J': { // Level 10 equivalent
+    [PhonemeType.L]: ["Lexicographers logically list lexical links.", "Legitimacy levels look like local liberty.", "Linear logic limits long-term learning."],
+    [PhonemeType.R]: ["Rigorous rhetoric requires robust reason.", "Resonating rumors reached remote regions.", "Recapitulating research reveals real risk."],
+    [PhonemeType.S]: ["Subjective sentiments suggest social shifts.", "Sociological studies show systemic stress.", "Sophisticated schemes support solid success."],
+    [SentenceType.CONVERSATIONAL]: ["Assess the validity of a philosophical claim.", "Elaborate on the nuances of international law.", "Propose a solution to a global crisis."],
+    [SentenceType.TONGUE_TWISTER]: ["Which witch wished which wicked wish?", "Six sleek swans swam swiftly."]
+  },
+  'K': { // Level 11 equivalent
+    [PhonemeType.L]: ["Legislative loopholes limit legal leverage.", "Localized labor looks like literal logic.", "Longitudinal limits limit local learning."],
+    [PhonemeType.R]: ["Reciprocal resonance requires real rapport.", "Remunerative research rewards robust rigor.", "Recurrent revelations regarding rare roots."],
+    [PhonemeType.S]: ["Systemic stratification suggests social strife.", "Statistical standardizations support science.", "Structural stability supports stable systems."],
+    [SentenceType.CONVERSATIONAL]: ["Deconstruct the narrative of a political speech.", "Theorize on the implications of AI ethics.", "Evaluate the legacy of a historical figure."],
+    [SentenceType.TONGUE_TWISTER]: ["Strict strong speech students skip silly subjects.", "Toy boat, toy boat, toy boat."]
+  },
+  'L': { // Level 12 equivalent
+    [PhonemeType.L]: ["The legislative branch meticulously evaluates constitutional amendments.", "Logistical limitations inevitably lead to longitudinal liability.", "Linguistic lexicography logically lists lexical levels."],
+    [PhonemeType.R]: ["Regulatory requirements restrict rapid urban reconstruction projects.", "Rhetorical strategies are essential for persuasive professional writing.", "Renewable resource research remains remarkably relevant today."],
+    [PhonemeType.S]: ["Systemic sociological shifts suggest substantial societal stress patterns.", "Scientific standards require specific and rigorous statistical significance.", "Sophisticated software systems support exceptionally complex calculations."],
+    [SentenceType.CONVERSATIONAL]: ["Articulate the correlation between fiscal policy and social welfare.", "Critically examine the intersection of technology and human rights.", "Hypothesize about the long-term effects of global migration."],
+    [SentenceType.TONGUE_TWISTER]: ["Imagine an imaginary menagerie manager managing an imaginary menagerie.", "Which witch wished which wicked wish?"]
+  }
+};
 
 export const AI_PERSONA_PROMPT = `
-You are Speech Pal, a professional speech pathologist based in Illinois. Your role is to assess and provide constructive feedback to elementary and middle school students who are practicing specific speech sounds. Your communication style is supportive, clear, and objective, focusing on specific observations and actionable strategies for improvement, rather than overly enthusiastic or informal praise.
+You are Speech Pal, a professional speech pathologist. Your role is to assess and provide constructive feedback to students practicing speech sounds.
+Your communication style must be adapted to the student's difficulty level:
+- LEVELS A-D: Warm, encouraging, simple words, playful but professional.
+- LEVELS E-H: Supportively mentor-like, clear, using slightly more academic terms.
+- LEVELS I-L: Mature, professional, direct, focusing on clarity for adulthood and career success.
+Focus on specific observations and actionable strategies.
 `;
 
 export const APP_NAME = "Speech Practice Pal";
