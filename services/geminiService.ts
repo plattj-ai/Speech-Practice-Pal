@@ -21,7 +21,7 @@ const createGeminiService = (): GeminiServiceInstance => {
         model: "gemini-2.5-flash-preview-tts",
         contents: [{ parts: [{ text: text }] }], 
         config: {
-          responseModalalities: [Modality.AUDIO],
+          responseModalities: [Modality.AUDIO],
           speechConfig: {
             voiceConfig: {
               prebuiltVoiceConfig: { voiceName: VOICE_NAME },
@@ -87,7 +87,7 @@ const createGeminiService = (): GeminiServiceInstance => {
             - spokenTranscript: Literal transcription.
             - detailedErrors: word-by-word analysis.
             - overallDifficultPhonemes: patterns found.
-            - overallFeedback: Supportive response from Ms. Emily.
+            - overallFeedback: Supportive response from Speech Pal.
           `,
           thinkingConfig: {
             thinkingBudget: 2048

@@ -155,7 +155,7 @@ const App: React.FC = () => {
 
   const handleSessionEnd = useCallback(async () => {
     setIsLoading(true);
-    setLoadingMessage("Ms. Emily is writing your report...");
+    setLoadingMessage("Speech Pal is writing your report...");
     await cleanupAudioResources();
     const totalErrors = errorHistoryRef.current.reduce((acc, curr) => acc + curr.errors.length, 0);
     let difficultSoundsAnalysis = "Session concluded. ";
@@ -258,7 +258,7 @@ const App: React.FC = () => {
   const processRecordedAudio = useCallback(async (audioBlob: Blob) => {
     setIsLoading(true);
     const messages = [
-      "Ms. Emily is listening closely...",
+      "Speech Pal is listening closely...",
       "Analyzing speech sounds...",
       "Checking for substitutions...",
       "Almost there...",

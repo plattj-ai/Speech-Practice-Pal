@@ -63,7 +63,7 @@ export const generatePdfReport = (reportData: ReportData): void => {
   // Qualitative Analysis
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(14);
-  doc.text("Qualitative Analysis (Ms. Emily's Notes):", 20, yOffset);
+  doc.text("Qualitative Analysis (Speech Pal's Notes):", 20, yOffset);
   yOffset += 7;
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(12);

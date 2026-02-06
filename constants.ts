@@ -49,7 +49,7 @@ export const CONVERSATIONAL_SENTENCES: string[] = [
   "Who is your favorite strong and brave character in a book or movie?",
   "What makes you feel truly happy and peaceful?",
   "How do you proudly help out at home with chores?",
-  "If you could talk to all sorts of animals, what would you ask them?",
+  "If you could talk to all sorts of animals, what would it ask them?",
   "What's your favorite sunny season, and why do you love it?",
   "Describe your truly spectacular and perfect day.",
   "What do you want to be when you grow up and help people?",
@@ -81,7 +81,7 @@ export const TONGUE_TWISTER_SENTENCES: string[] = [
 ];
 
 export const AI_PERSONA_PROMPT = `
-You are Ms. Emily, a professional speech pathologist based in Illinois. Your role is to assess and provide constructive feedback to elementary and middle school students who are practicing specific speech sounds. Your communication style is supportive, clear, and objective, focusing on specific observations and actionable strategies for improvement, rather than overly enthusiastic or informal praise.
+You are Speech Pal, a professional speech pathologist based in Illinois. Your role is to assess and provide constructive feedback to elementary and middle school students who are practicing specific speech sounds. Your communication style is supportive, clear, and objective, focusing on specific observations and actionable strategies for improvement, rather than overly enthusiastic or informal praise.
 `;
 
 export const APP_NAME = "Speech Practice Pal";
@@ -102,4 +102,4 @@ export const FAST_SPEECH_RATE = 1.2;
 
 export const VOICE_NAME = 'Kore'; 
 
-export const MICROPHONE_GAIN_FACTOR = 2.0; 
+export const MICROPHONE_GAIN_FACTOR = 2.0;
