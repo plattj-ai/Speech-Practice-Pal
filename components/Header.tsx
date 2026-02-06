@@ -1,4 +1,3 @@
-
 // components/Header.tsx
 import React from 'react';
 import { APP_NAME, APP_SLOGAN, PRIMARY_PURPLE, TEXT_WHITE } from '../constants';
@@ -33,7 +32,7 @@ const Header: React.FC<HeaderProps> = ({ sessionState, onExitSession }) => {
           <Button 
             variant="secondary" 
             onClick={onExitSession}
-            className="bg-white !text-[#582D88] hover:bg-gray-100 py-2 px-4 text-sm font-bold border-none"
+            className="!bg-white !text-[#582D88] hover:!bg-gray-100 py-1.5 px-4 text-sm font-bold border-none shadow-sm transition-colors"
           >
             Exit
           </Button>

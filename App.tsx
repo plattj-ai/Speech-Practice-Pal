@@ -390,9 +390,9 @@ const App: React.FC = () => {
             <div className="w-full mb-8">
               <p className="text-sm font-bold uppercase tracking-wider text-gray-500 mb-3 text-center">1. Choose Your Sound</p>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                <Button onClick={() => setTargetPhoneme(PhonemeType.L)} variant={targetPhoneme === PhonemeType.L ? 'primary' : 'secondary'}>/L/ sound</Button>
-                <Button onClick={() => setTargetPhoneme(PhonemeType.R)} variant={targetPhoneme === PhonemeType.R ? 'primary' : 'secondary'}>/R/ sound</Button>
-                <Button onClick={() => setTargetPhoneme(PhonemeType.S)} variant={targetPhoneme === PhonemeType.S ? 'primary' : 'secondary'}>/S/ sound</Button>
+                <Button onClick={() => setTargetPhoneme(PhonemeType.L)} variant={targetPhoneme === PhonemeType.L ? 'primary' : 'secondary'}>L sound</Button>
+                <Button onClick={() => setTargetPhoneme(PhonemeType.R)} variant={targetPhoneme === PhonemeType.R ? 'primary' : 'secondary'}>R sound</Button>
+                <Button onClick={() => setTargetPhoneme(PhonemeType.S)} variant={targetPhoneme === PhonemeType.S ? 'primary' : 'secondary'}>S sound</Button>
                 <Button onClick={() => setTargetPhoneme(PhonemeType.MIX)} variant={targetPhoneme === PhonemeType.MIX ? 'primary' : 'secondary'}>Mix All</Button>
               </div>
             </div>
@@ -426,7 +426,7 @@ const App: React.FC = () => {
                <div className="flex space-x-2 mt-1">
                  {targetPhoneme !== PhonemeType.MIX && (
                    <span className="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded-full font-bold">
-                     Target: /{targetPhoneme.toLowerCase()}/
+                     Target: {targetPhoneme} sound
                    </span>
                  )}
                  <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full font-bold">
