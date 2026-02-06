@@ -50,7 +50,7 @@ const createGeminiService = (): GeminiServiceInstance => {
   const analyzePronunciation = async (expectedSentence: string, audioBase64: string, targetPhoneme?: PhonemeType, difficultyLevel: DifficultyLevel = 'A'): Promise<AnalysisResult> => {
     try {
       const phonemeContext = targetPhoneme && targetPhoneme !== PhonemeType.MIX 
-        ? `The student is specifically working on the /${targetPhoneme.toLowerCase()}/ sound today. Pay extra attention to its articulation.` 
+        ? `Focus strictly on the /${targetPhoneme.toLowerCase()}/ sound.` 
         : "";
 
       const response = await ai.models.generateContent({
@@ -65,34 +65,25 @@ const createGeminiService = (): GeminiServiceInstance => {
                 }
               },
               {
-                text: `STRICT PHONETIC ASSESSMENT for Difficulty Level ${difficultyLevel} student: The student was asked to say: "${expectedSentence}". 
-                ${phonemeContext}
-                Analyze the audio for phonetic accuracy. 
-                Identify substitutions, omissions, distortions, or additions.
-                Output the literal sounds heard in 'spokenTranscript'.`
+                text: `BALANCED PHONETIC ASSESSMENT (Level ${difficultyLevel}). Target: "${expectedSentence}". ${phonemeContext} 
+                Instructions: 
+                - Be a mechanical coach. No fluff. 
+                - Loosen sensitivity by 10%: Allow for minor natural variations in speech that do not hinder overall intelligibility.
+                - Limit feedback to 1-3 sentences.
+                - Use vocabulary appropriate for Level ${difficultyLevel}.`
               }
             ]
           }
         ],
         config: {
           systemInstruction: AI_PERSONA_PROMPT + `
-            ACT AS A CLINICAL PHONETICIAN.
-            
-            YOUR PROTOCOL:
-            1. Auditory Analysis: Listen for phonological processes.
-            2. Thinking Phase: Reason through acoustic features.
-            3. Zero Autocorrect: Transcribe EXACTLY what was said.
-            
-            RESPONSE REQUIREMENTS:
-            - spokenTranscript: Literal transcription.
-            - detailedErrors: word-by-word analysis.
-            - overallDifficultPhonemes: patterns found.
-            - overallFeedback: Supportive response from Speech Pal tailored to Difficulty Level ${difficultyLevel}.
+            Strict Requirement: overallFeedback MUST be 1-3 sentences maximum. 
+            Threshold: Ignore subtle phonetic nuances. Only flag clear articulation errors or substitutions.
           `,
           thinkingConfig: {
             thinkingBudget: 2048
           },
-          temperature: 0.1, 
+          temperature: 0.25, // Slightly higher to reduce hyper-fixation on perfection
           responseMimeType: "application/json",
           responseSchema: {
             type: Type.OBJECT,
@@ -115,7 +106,7 @@ const createGeminiService = (): GeminiServiceInstance => {
                 type: Type.ARRAY,
                 items: { type: Type.STRING },
               },
-              overallFeedback: { type: Type.STRING },
+              overallFeedback: { type: Type.STRING, description: "1-3 sentences of mechanical coaching feedback." },
             },
             required: ["spokenTranscript", "detailedErrors", "overallDifficultPhonemes", "overallFeedback"],
           },
@@ -130,10 +121,10 @@ const createGeminiService = (): GeminiServiceInstance => {
     } catch (error) {
       console.error("Advanced Phonetic Analysis Error:", error);
       return {
-        spokenTranscript: "[Phonetic analysis timed out or failed]",
+        spokenTranscript: "[Analysis failed]",
         detailedErrors: [],
         overallDifficultPhonemes: [],
-        overallFeedback: "I'm listening so closely I almost missed it! Let's try that one more time, nice and clear for me.",
+        overallFeedback: "Clearer recording required for analysis.",
       };
     }
   };
@@ -142,15 +133,15 @@ const createGeminiService = (): GeminiServiceInstance => {
     try {
       const response = await ai.models.generateContent({
         model: 'gemini-3-flash-preview',
-        contents: [{ parts: [{ text: `Summary of session for Difficulty Level ${difficultyLevel} student: ${reportSummary}` }] }],
+        contents: [{ parts: [{ text: `Summarize for clinical report: ${reportSummary}` }] }],
         config: {
-          systemInstruction: AI_PERSONA_PROMPT + `\n\nGenerate a professional speech-language summary suitable for a Level ${difficultyLevel} student's record.`,
-          temperature: 0.7,
+          systemInstruction: AI_PERSONA_PROMPT + `\n\nProvide exactly 1-3 technical sentences for a pathologist's record.`,
+          temperature: 0.5,
         },
       });
-      return response.text?.trim() || "Session documentation complete.";
+      return response.text?.trim() || "Practice session completed.";
     } catch (error) {
-      return "The student completed targeted phonetic practice.";
+      return "Targeted phonetic practice session concluded.";
     }
   };
 

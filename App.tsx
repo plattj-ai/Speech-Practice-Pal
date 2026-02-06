@@ -205,7 +205,6 @@ const App: React.FC = () => {
     const diffLibrary = SENTENCE_LIBRARY[difficultyLevel];
 
     if (phoneme === PhonemeType.MIX) {
-      // Collect all sentences for the selected difficulty level
       baseSentences = [
         ...diffLibrary[PhonemeType.L],
         ...diffLibrary[PhonemeType.R],
@@ -214,12 +213,19 @@ const App: React.FC = () => {
         ...diffLibrary[SentenceType.TONGUE_TWISTER]
       ];
     } else {
-      // Use specific phoneme or sentence type list
       baseSentences = diffLibrary[phoneme] || diffLibrary[type] || diffLibrary[PhonemeType.L];
     }
 
-    setCurrentSentenceList(baseSentences);
-    setCurrentSentenceIndex(Math.floor(Math.random() * baseSentences.length));
+    // Shuffle and pick unique sentences to prevent repeats
+    const uniqueSessionSentences = [...baseSentences]
+      .sort(() => Math.random() - 0.5)
+      .slice(0, numSentences);
+
+    setCurrentSentenceList(uniqueSessionSentences);
+    setCurrentSentenceIndex(0);
+    totalSentencesReadRef.current = 0;
+    errorHistoryRef.current = [];
+    difficultPhonemesAcrossSession.current = new Set();
     
     const stream = await requestMicrophone(); 
     if (stream) {
@@ -234,16 +240,12 @@ const App: React.FC = () => {
   const currentSentence = currentSentenceList[currentSentenceIndex];
 
   const moveToNextSentence = useCallback(() => {
-    if (currentSentenceList.length > 1) {
-      let newIndex = Math.floor(Math.random() * currentSentenceList.length);
-      while (newIndex === currentSentenceIndex) newIndex = Math.floor(Math.random() * currentSentenceList.length);
-      setCurrentSentenceIndex(newIndex);
-    }
+    setCurrentSentenceIndex(prev => prev + 1);
     setRecognitionAttemptCount(0); 
     setErrorDetailsForDisplay([]); 
     setSpokenTranscription('');
     setCurrentSentenceFeedback(''); 
-  }, [currentSentenceList, currentSentenceIndex]);
+  }, []);
 
   const handleReadAloud = useCallback(async (text: string, speed?: number) => {
     if (!outputAudioContextRef.current || !outputAudioGainNodeRef.current) return;
@@ -288,7 +290,7 @@ const App: React.FC = () => {
       analysisResult.overallDifficultPhonemes.forEach(p => difficultPhonemesAcrossSession.current.add(p));
       setErrorDetailsForDisplay(analysisResult.detailedErrors);
       setCurrentSentenceFeedback(analysisResult.overallFeedback);
-      totalSentencesReadRef.current++; 
+      
       errorHistoryRef.current.push({
         timestamp: Date.now(),
         expectedSentence: currentSentence,
@@ -296,9 +298,15 @@ const App: React.FC = () => {
         errors: analysisResult.detailedErrors,
         attempts: recognitionAttemptCount + 1,
       });
+
       await handleReadAloud(analysisResult.overallFeedback, FAST_SPEECH_RATE);
-      if (analysisResult.detailedErrors.length === 0) moveToNextSentence();
-      else setRecognitionAttemptCount(prev => prev + 1);
+      
+      if (analysisResult.detailedErrors.length === 0) {
+        totalSentencesReadRef.current++; 
+        moveToNextSentence();
+      } else {
+        setRecognitionAttemptCount(prev => prev + 1);
+      }
     } catch (error) {
       console.error(error);
     } finally {
@@ -419,34 +427,49 @@ const App: React.FC = () => {
           </div>
         );
       case SessionState.PRACTICE:
+        const progressPercentage = (totalSentencesReadRef.current / totalSentencesInSession) * 100;
         return (
           <div className="flex flex-col items-center justify-between h-full w-full p-4 md:p-8">
-            <div className="flex flex-col items-center">
-               <p className={`text-lg font-medium ${ACCENT_BLUE}`}>Attempt: {recognitionAttemptCount + 1} / 3</p>
-               <div className="flex space-x-2 mt-1">
+            <div className="flex flex-col items-center w-full max-w-4xl">
+               <div className="flex justify-between items-end w-full mb-1 px-1">
+                 <span className="text-[10px] font-black uppercase tracking-[0.2em] text-purple-500">Practice Progress</span>
+                 <span className="text-xs font-bold text-purple-700">{totalSentencesReadRef.current} / {totalSentencesInSession}</span>
+               </div>
+               <div className="w-full bg-gray-200 rounded-full h-2 shadow-inner overflow-hidden mb-4">
+                 <div 
+                   className="bg-gradient-to-r from-purple-500 to-purple-700 h-full transition-all duration-1000 ease-out" 
+                   style={{ width: `${progressPercentage}%` }}
+                 ></div>
+               </div>
+               <div className="flex space-x-2">
+                 <p className={`text-sm font-bold ${ACCENT_BLUE} uppercase tracking-tight`}>Try: {recognitionAttemptCount + 1} / 3</p>
+                 <span className="text-gray-300">|</span>
                  {targetPhoneme !== PhonemeType.MIX && (
-                   <span className="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded-full font-bold">
-                     Target: {targetPhoneme} sound
+                   <span className="text-[10px] bg-purple-100 text-purple-700 px-2 py-0.5 rounded-md font-bold uppercase">
+                     {targetPhoneme} Sound
                    </span>
                  )}
-                 <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full font-bold">
+                 <span className="text-[10px] bg-gray-100 text-gray-600 px-2 py-0.5 rounded-md font-bold uppercase">
                    Level {difficultyLevel}
                  </span>
                </div>
             </div>
-            <div className="flex-grow flex items-center justify-center w-full max-w-4xl bg-purple-50 rounded-lg p-6 shadow-inner animate-fadeIn relative overflow-hidden my-6">
+            
+            <div className="flex-grow flex items-center justify-center w-full max-w-4xl bg-white border-2 border-purple-50 rounded-3xl p-8 shadow-xl animate-fadeIn relative overflow-hidden my-6">
               {isLoading && !isRecording ? ( 
                 <LoadingSpinner message={loadingMessage} />
               ) : (
                 <FeedbackDisplay sentence={currentSentence} errorWords={errorDetailsForDisplay.map(err => err.word)} />
               )}
             </div>
+            
             {currentSentenceFeedback && ( 
-              <div className="mt-4 p-4 bg-blue-100 border-l-4 border-blue-500 text-blue-800 rounded shadow animate-fadeIn max-w-lg mx-auto w-full">
-                <p className="italic text-center">{currentSentenceFeedback}</p>
+              <div className="mb-24 p-5 bg-gradient-to-br from-blue-50 to-indigo-50 border-l-4 border-indigo-400 text-indigo-900 rounded-xl shadow-md animate-slideUp max-w-2xl mx-auto w-full">
+                <p className="text-sm md:text-base font-medium text-center leading-relaxed">"{currentSentenceFeedback}"</p>
               </div>
             )}
-            <div className="fixed bottom-0 left-0 right-0 p-4 md:p-6 bg-white shadow-lg flex justify-center items-center space-x-4 md:space-x-8 z-40 border-t border-gray-200">
+            
+            <div className="fixed bottom-0 left-0 right-0 p-4 md:p-8 bg-white/80 backdrop-blur-md shadow-[0_-10px_30px_rgba(0,0,0,0.05)] flex justify-center items-center space-x-4 md:space-x-10 z-40 border-t border-gray-100">
               <ReadAloudButton onReadAloud={() => handleReadAloud(currentSentence, SLOWER_SPEECH_RATE)} isSpeaking={isSpeaking} disabled={isRecording} />
               <MicrophoneButton onToggleRecord={handleToggleRecord} isRecording={isRecording} disabled={isSpeaking || isLoading} />
             </div>
@@ -467,7 +490,7 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-gray-100">
+    <div className="min-h-screen flex flex-col bg-gray-50/50">
       <Header sessionState={sessionState} onExitSession={handleExitSession} />
       <main className="flex-grow flex items-center justify-center p-4">{renderContent()}</main>
     </div>
