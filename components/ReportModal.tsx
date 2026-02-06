@@ -31,7 +31,7 @@ const ReportModal: React.FC<ReportModalProps> = ({ reportData, onClose }) => {
 
         <div className="p-6 text-base md:text-lg leading-relaxed">
           <h3 className={`text-xl md:text-2xl font-semibold ${TEXT_DARK} mb-4`}>Session Overview</h3>
-          <p><strong className={ACCENT_BLUE}>Duration:</strong> {reportData.sessionDurationMinutes} minutes</p>
+          <p><strong className={ACCENT_BLUE}>Total Sentences for Session:</strong> {reportData.totalSentencesInSession}</p>
           <p><strong className={ACCENT_BLUE}>Sentences Read:</strong> {reportData.totalSentencesRead}</p>
           <p><strong className={ACCENT_BLUE}>Total Errors Detected:</strong> {reportData.totalErrors}</p>
 

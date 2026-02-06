@@ -2,26 +2,26 @@
 import { SentenceType } from './types'; // Import SentenceType
 
 export const CONVERSATIONAL_SENTENCES: string[] = [
-  "What did you do today at school?",
-  "Tell me about your favorite animal.",
-  "What is your favorite food and why?",
-  "If you could have any superpower, what would it be?",
-  "Describe your best friend to me.",
-  "What do you like to do on weekends?",
-  "Where do you want to go for your next vacation?",
-  "What's the funniest thing that happened to you recently?",
-  "If you built a treehouse, what would it look like?",
-  "Tell me about a game you like to play.",
-  "What's something new you learned this week?",
-  "Who is your favorite character in a book or movie?",
-  "What makes you feel happy?",
-  "How do you help out at home?",
-  "If you could talk to animals, what would you ask them?",
-  "What's your favorite season and why?",
-  "Describe your perfect day.",
-  "What do you want to be when you grow up?",
-  "Tell me about a time you were brave.",
-  "What is something you are really good at?",
+  "What interesting stories did you read at school today?",
+  "Tell me about your favorite playful animal.",
+  "What is your favorite fresh fruit, and why do you like it so much?",
+  "If you could have any special superpower, what would it be?",
+  "Describe your strong and brave best friend to me.",
+  "What do you like to do on bright and sunny weekends?",
+  "Where do you prefer to travel for your next great adventure?",
+  "What's the thrilling and funniest thing that happened to you recently?",
+  "If you built a tall treehouse, what would it look like?",
+  "Tell me about a game you particularly love to play.",
+  "What's something new and truly interesting you learned this week?",
+  "Who is your favorite strong and brave character in a book or movie?",
+  "What makes you feel truly happy and peaceful?",
+  "How do you proudly help out at home with chores?",
+  "If you could talk to all sorts of animals, what would you ask them?",
+  "What's your favorite sunny season, and why do you love it?",
+  "Describe your truly spectacular and perfect day.",
+  "What do you want to be when you grow up and help people?",
+  "Tell me about a challenging time when you were truly brave.",
+  "What is something you are truly great at and practice regularly?",
 ];
 
 export const TONGUE_TWISTER_SENTENCES: string[] = [
@@ -68,3 +68,5 @@ export const SLOWER_SPEECH_RATE = 0.8; // Slower for reading sentences
 export const FAST_SPEECH_RATE = 1.2; // For quick feedback
 
 export const VOICE_NAME = 'Kore'; // Preferred AI voice for friendly tone
+
+export const MICROPHONE_GAIN_FACTOR = 2.0; // Factor to amplify microphone input (e.g., 2.0 = 6dB boost)

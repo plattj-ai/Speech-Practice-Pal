@@ -49,7 +49,9 @@ export const generatePdfReport = (reportData: ReportData): void => {
   yOffset += 7;
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(12);
-  doc.text(`Duration: ${reportData.sessionDurationMinutes} minutes`, 25, yOffset);
+  // FIX: Updated `sessionDurationMinutes` to `totalSentencesInSession` as per `ReportData` interface
+  // FIX: Updated text for clarity from "Duration" to "Sentences in Session"
+  doc.text(`Sentences in Session: ${reportData.totalSentencesInSession}`, 25, yOffset);
   yOffset += 7;
   doc.text(`Sentence Type: ${reportData.sentenceType === 'conversational' ? 'Conversational' : 'Tongue Twister'}`, 25, yOffset);
   yOffset += 7;

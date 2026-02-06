@@ -37,12 +37,12 @@ export interface ErrorDetail {
 }
 
 export interface ReportData {
-  totalSentencesRead: number;
+  totalSentencesInSession: number; // Changed from sessionDurationMinutes
+  totalSentencesRead: number; // Sum of detailedErrors.length across all ErrorDetail entries
   totalErrors: number; // Sum of detailedErrors.length across all ErrorDetail entries
   errorHistory: ErrorDetail[];
   difficultSoundsAnalysis: string; // This will come from combining overallDifficultPhonemes
   qualitativeAnalysis: string;
-  sessionDurationMinutes: number;
   sentenceType: SentenceType; // Added sentence type to report data
 }
 
