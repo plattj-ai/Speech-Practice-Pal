@@ -14,41 +14,49 @@ export enum SentenceType {
   TONGUE_TWISTER = 'tongueTwister',
 }
 
+export enum PhonemeType {
+  L = 'L',
+  R = 'R',
+  S = 'S',
+  MIX = 'MIX',
+}
+
 export interface DetailedError {
   word: string;
-  errorType?: string; // e.g., "Substitution", "Distortion", "Omission", "Addition", "Fronting", "Stopping", "Cluster Reduction", "Final Consonant Deletion"
-  phonemeIssue: string; // e.g., "/r/ substituted with /w/", "lateral lisp for /s/", "omission of final /t/"
+  errorType?: string; 
+  phonemeIssue: string; 
   suggestion: string;
 }
 
 export interface AnalysisResult {
   detailedErrors: DetailedError[];
-  overallDifficultPhonemes: string[]; // Specific phonemes or patterns identified, e.g., ["/r/", "/s/-lisp", "th-fronting"]
-  overallFeedback: string; // Ms. Emily's qualitative summary for this specific attempt
-  spokenTranscript: string; // What the AI heard
+  overallDifficultPhonemes: string[]; 
+  overallFeedback: string; 
+  spokenTranscript: string; 
 }
 
 export interface ErrorDetail {
   timestamp: number;
   expectedSentence: string;
   spokenSentence: string;
-  errors: DetailedError[]; // List of detailed errors for this attempt
+  errors: DetailedError[]; 
   attempts: number;
 }
 
 export interface ReportData {
-  totalSentencesInSession: number; // Changed from sessionDurationMinutes
-  totalSentencesRead: number; // Sum of detailedErrors.length across all ErrorDetail entries
-  totalErrors: number; // Sum of detailedErrors.length across all ErrorDetail entries
+  totalSentencesInSession: number; 
+  totalSentencesRead: number; 
+  totalErrors: number; 
   errorHistory: ErrorDetail[];
-  difficultSoundsAnalysis: string; // This will come from combining overallDifficultPhonemes
+  difficultSoundsAnalysis: string; 
   qualitativeAnalysis: string;
-  sentenceType: SentenceType; // Added sentence type to report data
+  sentenceType: SentenceType; 
+  targetPhoneme?: PhonemeType;
 }
 
 export interface AudioBlob {
-  data: string; // Base64 encoded PCM data
-  mimeType: string; // 'audio/pcm;rate=16000'
+  data: string; 
+  mimeType: string; 
 }
 
 export enum AiVoice {
@@ -58,9 +66,6 @@ export enum AiVoice {
   CHARON = 'Charon',
   FENRIR = 'Fenrir',
 }
-
-// --- Google Cloud Speech-to-Text Pronunciation Assessment Types ---
-// (These are technically no longer used by the logic but kept for reference or removal later)
 
 export interface PhonemeInfo {
   phoneme: string; 

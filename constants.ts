@@ -1,5 +1,38 @@
 // constants.ts
-import { SentenceType } from './types'; // Import SentenceType
+import { SentenceType } from './types'; 
+
+export const L_SOUND_SENTENCES: string[] = [
+  "Little Lily loves lucky yellow lollipops.",
+  "Look at the lovely blue lake in the light.",
+  "The lazy lion lay on the long leaf.",
+  "Please fill the glass with cool lemonade.",
+  "Leo played with his yellow ball all day long.",
+  "Large ladybugs like to leap on little leaves.",
+  "The lovely light fell on the lonely hills.",
+  "Let's look for lucky shells along the lake."
+];
+
+export const R_SOUND_SENTENCES: string[] = [
+  "Red rabbits run round the green garden.",
+  "Robert read a really great story about rockets.",
+  "The river runs right past the bright red rock.",
+  "Barry brought brown bread for the bright bird.",
+  "Are you ready to race on the red track?",
+  "Rainy roads require really careful driving.",
+  "The roaring tiger ran through the dark forest.",
+  "Richie wrote a report about rare reptiles."
+];
+
+export const S_SOUND_SENTENCES: string[] = [
+  "Six silly seals swam in the salty sea.",
+  "Sam saw seven silver stars in the sky.",
+  "The sun is shining on the soft sand.",
+  "Please pass the sweet strawberry soup.",
+  "Sarah says she saw some small snakes.",
+  "Listen to the whistling wind in the grass.",
+  "The fast bus stops at the street corner.",
+  "Step on the grass and see the spring flowers."
+];
 
 export const CONVERSATIONAL_SENTENCES: string[] = [
   "What interesting stories did you read at school today?",
@@ -54,7 +87,7 @@ You are Ms. Emily, a professional speech pathologist based in Illinois. Your rol
 export const APP_NAME = "Speech Practice Pal";
 export const APP_SLOGAN = "#SpeakWithConfidence";
 export const PRIMARY_PURPLE = 'bg-[#582D88]';
-export const ACCENT_BLUE = 'text-[#446CA3]'; // Example for text. Could be used for buttons as well.
+export const ACCENT_BLUE = 'text-[#446CA3]'; 
 export const TEXT_WHITE = 'text-white';
 export const TEXT_DARK = 'text-gray-800';
 export const BUTTON_PRIMARY_CLASS = 'px-6 py-3 rounded-full font-semibold text-white transition-all duration-300';
@@ -63,10 +96,10 @@ export const BUTTON_SECONDARY_BLUE = `bg-[#446CA3] hover:bg-[#345381] ${BUTTON_P
 export const BORDER_PRIMARY_PURPLE = 'border-[#582D88]';
 export const FOCUS_RING_PURPLE = 'focus:ring-2 focus:ring-[#582D88] focus:ring-opacity-50';
 
-export const BASE_SPEECH_RATE = 1.0; // Normal speech rate
-export const SLOWER_SPEECH_RATE = 0.8; // Slower for reading sentences
-export const FAST_SPEECH_RATE = 1.2; // For quick feedback
+export const BASE_SPEECH_RATE = 1.0; 
+export const SLOWER_SPEECH_RATE = 0.8; 
+export const FAST_SPEECH_RATE = 1.2; 
 
-export const VOICE_NAME = 'Kore'; // Preferred AI voice for friendly tone
+export const VOICE_NAME = 'Kore'; 
 
-export const MICROPHONE_GAIN_FACTOR = 2.0; // Factor to amplify microphone input (e.g., 2.0 = 6dB boost)
+export const MICROPHONE_GAIN_FACTOR = 2.0; 

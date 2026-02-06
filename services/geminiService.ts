@@ -1,12 +1,12 @@
 // services/geminiService.ts
 import { GoogleGenAI, Modality, Chat, GenerateContentResponse, Type } from "@google/genai";
 import { AI_PERSONA_PROMPT, VOICE_NAME, BASE_SPEECH_RATE } from '../constants';
-import { AnalysisResult, DetailedError } from '../types';
+import { AnalysisResult, DetailedError, PhonemeType } from '../types';
 import { decodeAudioData, decodeBase64 } from './audioService';
 
 interface GeminiServiceInstance {
   readSentence: (text: string, outputContext: AudioContext, speed?: number) => Promise<AudioBuffer | undefined>;
-  analyzePronunciation: (expectedSentence: string, audioBase64: string) => Promise<AnalysisResult>;
+  analyzePronunciation: (expectedSentence: string, audioBase64: string, targetPhoneme?: PhonemeType) => Promise<AnalysisResult>;
   generateQualitativeAnalysis: (reportSummary: string) => Promise<string>;
 }
 
@@ -21,7 +21,7 @@ const createGeminiService = (): GeminiServiceInstance => {
         model: "gemini-2.5-flash-preview-tts",
         contents: [{ parts: [{ text: text }] }], 
         config: {
-          responseModalities: [Modality.AUDIO],
+          responseModalalities: [Modality.AUDIO],
           speechConfig: {
             voiceConfig: {
               prebuiltVoiceConfig: { voiceName: VOICE_NAME },
@@ -47,9 +47,12 @@ const createGeminiService = (): GeminiServiceInstance => {
     }
   };
 
-  const analyzePronunciation = async (expectedSentence: string, audioBase64: string): Promise<AnalysisResult> => {
+  const analyzePronunciation = async (expectedSentence: string, audioBase64: string, targetPhoneme?: PhonemeType): Promise<AnalysisResult> => {
     try {
-      // Use gemini-3-flash-preview for fast yet precise phonetic reasoning
+      const phonemeContext = targetPhoneme && targetPhoneme !== PhonemeType.MIX 
+        ? `The student is specifically working on the /${targetPhoneme.toLowerCase()}/ sound today. Pay extra attention to its articulation.` 
+        : "";
+
       const response = await ai.models.generateContent({
         model: 'gemini-3-flash-preview',
         contents: [
@@ -63,8 +66,9 @@ const createGeminiService = (): GeminiServiceInstance => {
               },
               {
                 text: `STRICT PHONETIC ASSESSMENT: The student was asked to say: "${expectedSentence}". 
+                ${phonemeContext}
                 Analyze the audio for phonetic accuracy. 
-                Identify substitutions (e.g., w/r), omissions, distortions (e.g., lisps), or additions.
+                Identify substitutions, omissions, distortions, or additions.
                 Output the literal sounds heard in 'spokenTranscript'.`
               }
             ]
@@ -77,16 +81,16 @@ const createGeminiService = (): GeminiServiceInstance => {
             YOUR PROTOCOL:
             1. Auditory Analysis: Listen for phonological processes (Gliding, Fronting, Stopping, Lisping).
             2. Thinking Phase: Use your thinking budget to reason through acoustic features to distinguish similar sounds.
-            3. Zero Autocorrect: Transcribe EXACTLY what was said, even if it is not a real word.
+            3. Zero Autocorrect: Transcribe EXACTLY what was said.
             
             RESPONSE REQUIREMENTS:
-            - spokenTranscript: Literal transcription (e.g., "wed wabbit").
+            - spokenTranscript: Literal transcription.
             - detailedErrors: word-by-word analysis.
             - overallDifficultPhonemes: patterns found.
             - overallFeedback: Supportive response from Ms. Emily.
           `,
           thinkingConfig: {
-            thinkingBudget: 2048 // Maintaining thinking budget for sound reasoning with Flash speed
+            thinkingBudget: 2048
           },
           temperature: 0.1, 
           responseMimeType: "application/json",

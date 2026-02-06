@@ -7,8 +7,22 @@ import ReadAloudButton from './components/ReadAloudButton';
 import LoadingSpinner from './components/LoadingSpinner';
 import FeedbackDisplay from './components/FeedbackDisplay';
 import ReportModal from './components/ReportModal';
-import { SessionState, ErrorDetail, ReportData, DetailedError, AnalysisResult, SentenceType } from './types'; 
-import { TONGUE_TWISTER_SENTENCES, CONVERSATIONAL_SENTENCES, BUTTON_PRIMARY_PURPLE, BUTTON_SECONDARY_BLUE, PRIMARY_PURPLE, TEXT_DARK, ACCENT_BLUE, SLOWER_SPEECH_RATE, FAST_SPEECH_RATE, MICROPHONE_GAIN_FACTOR } from './constants';
+import { SessionState, ErrorDetail, ReportData, DetailedError, AnalysisResult, SentenceType, PhonemeType } from './types'; 
+import { 
+  TONGUE_TWISTER_SENTENCES, 
+  CONVERSATIONAL_SENTENCES, 
+  L_SOUND_SENTENCES,
+  R_SOUND_SENTENCES,
+  S_SOUND_SENTENCES,
+  BUTTON_PRIMARY_PURPLE, 
+  BUTTON_SECONDARY_BLUE, 
+  PRIMARY_PURPLE, 
+  TEXT_DARK, 
+  ACCENT_BLUE, 
+  SLOWER_SPEECH_RATE, 
+  FAST_SPEECH_RATE, 
+  MICROPHONE_GAIN_FACTOR 
+} from './constants';
 import { geminiService } from './services/geminiService';
 import { decodeAudioData, decodeBase64, playAudioBuffer, encodeWAV } from './services/audioService'; 
 
@@ -31,6 +45,7 @@ registerProcessor('audio-recorder-processor', AudioRecorderProcessor);
 const App: React.FC = () => {
   const [sessionState, setSessionState] = useState<SessionState>(SessionState.CHOOSING_DURATION);
   const [totalSentencesInSession, setTotalSentencesInSession] = useState<number>(10);
+  const [targetPhoneme, setTargetPhoneme] = useState<PhonemeType>(PhonemeType.MIX);
   const [isRecording, setIsRecording] = useState<boolean>(false);
   const [isSpeaking, setIsSpeaking] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -147,7 +162,7 @@ const App: React.FC = () => {
     if (difficultPhonemesAcrossSession.current.size > 0) {
       difficultSoundsAnalysis += "Areas for practice: " + Array.from(difficultPhonemesAcrossSession.current).map(s => `'${s}'`).join(', ');
     }
-    const reportSummary = `Total Sentences: ${totalSentencesInSession}. Errors: ${totalErrors}. ${difficultSoundsAnalysis}`;
+    const reportSummary = `Total Sentences: ${totalSentencesInSession}. Errors: ${totalErrors}. Target Sound: ${targetPhoneme}. ${difficultSoundsAnalysis}`;
     let qualitativeAnalysis = "The student completed targeted practice.";
     try {
       qualitativeAnalysis = await geminiService.generateQualitativeAnalysis(reportSummary);
@@ -162,10 +177,11 @@ const App: React.FC = () => {
       difficultSoundsAnalysis,
       qualitativeAnalysis,
       sentenceType: chosenSentenceType,
+      targetPhoneme,
     });
     setSessionState(SessionState.REPORT);
     setIsLoading(false);
-  }, [totalSentencesInSession, chosenSentenceType, cleanupAudioResources]);
+  }, [totalSentencesInSession, chosenSentenceType, targetPhoneme, cleanupAudioResources]);
 
   useEffect(() => {
     if (sessionState === SessionState.PRACTICE && totalSentencesReadRef.current >= totalSentencesInSession) {
@@ -180,14 +196,24 @@ const App: React.FC = () => {
     }
   }, [shouldEndSession, handleSessionEnd]);
 
-  const startPracticeSession = useCallback(async (numSentences: number, type: SentenceType) => {
+  const startPracticeSession = useCallback(async (numSentences: number, type: SentenceType, phoneme: PhonemeType) => {
     setTotalSentencesInSession(numSentences);
     setChosenSentenceType(type); 
+    setTargetPhoneme(phoneme);
     setSessionState(SessionState.LOADING);
     setIsLoading(true);
-    const sentences = type === SentenceType.CONVERSATIONAL ? CONVERSATIONAL_SENTENCES : TONGUE_TWISTER_SENTENCES;
-    setCurrentSentenceList(sentences);
-    setCurrentSentenceIndex(Math.floor(Math.random() * sentences.length));
+    
+    let baseSentences: string[] = [];
+    if (phoneme === PhonemeType.L) baseSentences = L_SOUND_SENTENCES;
+    else if (phoneme === PhonemeType.R) baseSentences = R_SOUND_SENTENCES;
+    else if (phoneme === PhonemeType.S) baseSentences = S_SOUND_SENTENCES;
+    else {
+      baseSentences = type === SentenceType.CONVERSATIONAL ? CONVERSATIONAL_SENTENCES : TONGUE_TWISTER_SENTENCES;
+    }
+
+    setCurrentSentenceList(baseSentences);
+    setCurrentSentenceIndex(Math.floor(Math.random() * baseSentences.length));
+    
     const stream = await requestMicrophone(); 
     if (stream) {
       stream.getTracks().forEach(track => track.stop()); 
@@ -250,7 +276,7 @@ const App: React.FC = () => {
         reader.readAsDataURL(audioBlob);
       });
       const audioBase64 = await base64Promise;
-      const analysisResult = await geminiService.analyzePronunciation(currentSentence, audioBase64);
+      const analysisResult = await geminiService.analyzePronunciation(currentSentence, audioBase64, targetPhoneme);
       setSpokenTranscription(analysisResult.spokenTranscript);
       analysisResult.overallDifficultPhonemes.forEach(p => difficultPhonemesAcrossSession.current.add(p));
       setErrorDetailsForDisplay(analysisResult.detailedErrors);
@@ -273,7 +299,7 @@ const App: React.FC = () => {
       setIsLoading(false);
       setLoadingMessage("Analyzing...");
     }
-  }, [currentSentence, recognitionAttemptCount, handleReadAloud, moveToNextSentence]);
+  }, [currentSentence, recognitionAttemptCount, targetPhoneme, handleReadAloud, moveToNextSentence]);
 
   const handleToggleRecord = useCallback(async () => {
     if (isRecording) {
@@ -325,24 +351,55 @@ const App: React.FC = () => {
     switch (sessionState) {
       case SessionState.CHOOSING_DURATION:
         return (
-          <div className="flex flex-col items-center justify-center p-6 bg-white rounded-lg shadow-xl max-w-lg mx-auto animate-fadeIn">
-            <h2 className={`text-3xl font-bold ${TEXT_DARK} mb-6 text-center`}>Choose Your Practice Session!</h2>
-            <div className="flex flex-col md:flex-row gap-4 w-full justify-center mb-8">
-              <Button onClick={() => setChosenSentenceType(SentenceType.CONVERSATIONAL)} variant={chosenSentenceType === SentenceType.CONVERSATIONAL ? 'primary' : 'secondary'}>Conversational</Button>
-              <Button onClick={() => setChosenSentenceType(SentenceType.TONGUE_TWISTER)} variant={chosenSentenceType === SentenceType.TONGUE_TWISTER ? 'primary' : 'secondary'}>Tongue Twisters</Button>
+          <div className="flex flex-col items-center justify-center p-6 bg-white rounded-lg shadow-xl max-w-2xl mx-auto animate-fadeIn overflow-y-auto">
+            <h2 className={`text-3xl font-bold ${TEXT_DARK} mb-8 text-center`}>Practice Setup</h2>
+            
+            {/* Section 1: Target Sound */}
+            <div className="w-full mb-8">
+              <p className="text-sm font-bold uppercase tracking-wider text-gray-500 mb-3 text-center">1. Choose Your Sound</p>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <Button onClick={() => setTargetPhoneme(PhonemeType.L)} variant={targetPhoneme === PhonemeType.L ? 'primary' : 'secondary'}>/L/ sound</Button>
+                <Button onClick={() => setTargetPhoneme(PhonemeType.R)} variant={targetPhoneme === PhonemeType.R ? 'primary' : 'secondary'}>/R/ sound</Button>
+                <Button onClick={() => setTargetPhoneme(PhonemeType.S)} variant={targetPhoneme === PhonemeType.S ? 'primary' : 'secondary'}>/S/ sound</Button>
+                <Button onClick={() => setTargetPhoneme(PhonemeType.MIX)} variant={targetPhoneme === PhonemeType.MIX ? 'primary' : 'secondary'}>Mix All</Button>
+              </div>
             </div>
-            <div className="flex flex-col md:flex-row gap-4 w-full justify-center mb-8">
-              <Button onClick={() => setTotalSentencesInSession(10)} variant={totalSentencesInSession === 10 ? 'primary' : 'secondary'}>10 Sentences</Button>
-              <Button onClick={() => setTotalSentencesInSession(20)} variant={totalSentencesInSession === 20 ? 'primary' : 'secondary'}>20 Sentences</Button>
+
+            {/* Section 2: Style */}
+            <div className="w-full mb-8">
+              <p className="text-sm font-bold uppercase tracking-wider text-gray-500 mb-3 text-center">2. Choose Your Style</p>
+              <div className="flex flex-col md:flex-row gap-3">
+                <Button className="flex-1" onClick={() => setChosenSentenceType(SentenceType.CONVERSATIONAL)} variant={chosenSentenceType === SentenceType.CONVERSATIONAL ? 'primary' : 'secondary'}>Conversational</Button>
+                <Button className="flex-1" onClick={() => setChosenSentenceType(SentenceType.TONGUE_TWISTER)} variant={chosenSentenceType === SentenceType.TONGUE_TWISTER ? 'primary' : 'secondary'}>Tongue Twisters</Button>
+              </div>
             </div>
-            <Button onClick={() => startPracticeSession(totalSentencesInSession, chosenSentenceType)}>Start Practice!</Button>
+
+            {/* Section 3: Length */}
+            <div className="w-full mb-10">
+              <p className="text-sm font-bold uppercase tracking-wider text-gray-500 mb-3 text-center">3. Session Length</p>
+              <div className="flex flex-col md:flex-row gap-3">
+                <Button className="flex-1" onClick={() => setTotalSentencesInSession(10)} variant={totalSentencesInSession === 10 ? 'primary' : 'secondary'}>10 Sentences</Button>
+                <Button className="flex-1" onClick={() => setTotalSentencesInSession(20)} variant={totalSentencesInSession === 20 ? 'primary' : 'secondary'}>20 Sentences</Button>
+              </div>
+            </div>
+
+            <Button className="w-full py-4 text-xl shadow-lg hover:scale-105 active:scale-95" onClick={() => startPracticeSession(totalSentencesInSession, chosenSentenceType, targetPhoneme)}>
+              Start Practice!
+            </Button>
           </div>
         );
       case SessionState.PRACTICE:
         return (
           <div className="flex flex-col items-center justify-between h-full w-full p-4 md:p-8">
-            <p className={`text-lg font-medium ${ACCENT_BLUE} mb-8`}>Attempt: {recognitionAttemptCount + 1} / 3</p>
-            <div className="flex-grow flex items-center justify-center w-full max-w-4xl bg-purple-50 rounded-lg p-6 shadow-inner animate-fadeIn relative overflow-hidden">
+            <div className="flex flex-col items-center">
+               <p className={`text-lg font-medium ${ACCENT_BLUE}`}>Attempt: {recognitionAttemptCount + 1} / 3</p>
+               {targetPhoneme !== PhonemeType.MIX && (
+                 <span className="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded-full font-bold mt-1">
+                   Target: /{targetPhoneme.toLowerCase()}/
+                 </span>
+               )}
+            </div>
+            <div className="flex-grow flex items-center justify-center w-full max-w-4xl bg-purple-50 rounded-lg p-6 shadow-inner animate-fadeIn relative overflow-hidden my-6">
               {isLoading && !isRecording ? ( 
                 <LoadingSpinner message={loadingMessage} />
               ) : (
@@ -350,7 +407,7 @@ const App: React.FC = () => {
               )}
             </div>
             {currentSentenceFeedback && ( 
-              <div className="mt-4 p-3 bg-blue-100 border-l-4 border-blue-500 text-blue-800 rounded shadow animate-fadeIn max-w-lg mx-auto w-full">
+              <div className="mt-4 p-4 bg-blue-100 border-l-4 border-blue-500 text-blue-800 rounded shadow animate-fadeIn max-w-lg mx-auto w-full">
                 <p className="italic text-center">{currentSentenceFeedback}</p>
               </div>
             )}
