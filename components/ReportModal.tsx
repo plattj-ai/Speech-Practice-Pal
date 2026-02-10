@@ -1,10 +1,9 @@
 // components/ReportModal.tsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ReportData } from '../types';
 import Button from './Button';
 import { generatePdfReport } from '../services/pdfService';
-import { generateBadgeImage, downloadDataUrl } from '../services/badgeService';
-import { PRIMARY_PURPLE, ACCENT_BLUE, TEXT_DARK } from '../constants';
+import { generateBadgeImage } from '../services/badgeService';
 
 interface ReportModalProps {
   reportData: ReportData;
@@ -12,109 +11,84 @@ interface ReportModalProps {
 }
 
 const ReportModal: React.FC<ReportModalProps> = ({ reportData, onClose }) => {
-  const [isGeneratingBadge, setIsGeneratingBadge] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [badgePreviewUrl, setBadgePreviewUrl] = useState<string | null>(null);
   
+  useEffect(() => {
+    const createPreview = async () => {
+      try {
+        const url = await generateBadgeImage(reportData);
+        setBadgePreviewUrl(url);
+      } catch (err) {
+        console.error("Failed to generate badge preview", err);
+      }
+    };
+    createPreview();
+  }, [reportData]);
+
   if (!reportData) return null;
 
-  const handleDownloadPdf = () => {
-    generatePdfReport(reportData);
-  };
-
-  const handleDownloadBadge = async () => {
-    setIsGeneratingBadge(true);
+  const handleSaveReport = async () => {
+    setIsGenerating(true);
     try {
-      const pngData = await generateBadgeImage(reportData);
-      downloadDataUrl(pngData, `Speech_Star_Badge_${new Date().toISOString().slice(0, 10)}.png`);
+      generatePdfReport(reportData);
     } catch (error) {
-      console.error("Failed to generate badge:", error);
+      console.error("Failed to generate report:", error);
     } finally {
-      setIsGeneratingBadge(false);
+      setIsGenerating(false);
     }
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900 bg-opacity-75 p-4 sm:p-6">
-      <div className="relative bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto transform transition-all duration-300 scale-95 opacity-0 animate-scaleIn">
-        <div className={`sticky top-0 ${PRIMARY_PURPLE} text-white p-4 rounded-t-lg flex justify-between items-center`}>
-          <h2 className="text-2xl font-bold">Practice Report</h2>
-          <Button variant="secondary" onClick={onClose} className="px-3 py-1 bg-white text-purple-700 hover:bg-gray-100">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </Button>
-        </div>
-
-        <div className="p-6 text-base md:text-lg leading-relaxed">
-          {/* Achievement Banner */}
-          <div className="mb-8 p-6 bg-gradient-to-r from-purple-100 to-blue-100 rounded-xl border-2 border-purple-200 text-center shadow-sm">
-            <div className="flex justify-center mb-4">
-               <div className="bg-yellow-400 p-4 rounded-full shadow-lg ring-4 ring-white">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
-                  </svg>
-               </div>
-            </div>
-            <h3 className="text-2xl font-black text-purple-800 uppercase tracking-tighter">Session Complete!</h3>
-            <p className="text-purple-600 font-medium">You worked hard today. Don't forget to download your Speech Star Badge!</p>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/80 backdrop-blur-sm p-4 sm:p-6 overflow-y-auto">
+      <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-4xl animate-scaleIn overflow-hidden my-auto">
+        {/* Header */}
+        <div className={`sticky top-0 bg-gradient-to-r from-purple-700 to-indigo-800 text-white p-6 flex justify-between items-center shadow-lg z-10`}>
+          <div>
+            <h2 className="text-3xl font-black tracking-tight">Practice Complete!</h2>
+            <p className="text-purple-100 text-sm opacity-90 font-medium">Session Summary & Achievements</p>
           </div>
-
-          <h3 className={`text-xl md:text-2xl font-semibold ${TEXT_DARK} mb-4`}>Session Overview</h3>
-          <p><strong className={ACCENT_BLUE}>Difficulty Level:</strong> {reportData.difficultyLevel}</p>
-          <p><strong className={ACCENT_BLUE}>Total Sentences for Session:</strong> {reportData.totalSentencesInSession}</p>
-          <p><strong className={ACCENT_BLUE}>Sentences Read:</strong> {reportData.totalSentencesRead}</p>
-          <p><strong className={ACCENT_BLUE}>Total Errors Detected:</strong> {reportData.totalErrors}</p>
-
-          <h3 className={`text-xl md:text-2xl font-semibold ${TEXT_DARK} mt-6 mb-4`}>Speech Pal's Feedback</h3>
-          <p className="whitespace-pre-wrap">{reportData.qualitativeAnalysis}</p>
-
-          <h3 className={`text-xl md:text-2xl font-semibold ${TEXT_DARK} mt-6 mb-4`}>Areas for Practice</h3>
-          <p className="whitespace-pre-wrap">{reportData.difficultSoundsAnalysis}</p>
-
-          {reportData.errorHistory.length > 0 && (
-            <>
-              <h3 className={`text-xl md:text-2xl font-semibold ${TEXT_DARK} mt-6 mb-4`}>Detailed Error Log</h3>
-              <div className="space-y-4">
-                {reportData.errorHistory.map((sessionAttempt, sessionIndex) => (
-                  <div key={sessionIndex} className="border-l-4 border-gray-400 pl-4 py-2 bg-gray-50 bg-opacity-50 rounded">
-                    <p><strong>Sentence Attempt {sessionIndex + 1}:</strong> (Try {sessionAttempt.attempts})</p>
-                    <p>Expected: <span className="font-medium italic">"{sessionAttempt.expectedSentence}"</span></p>
-                    <p>Spoken: <span className="font-medium">"{sessionAttempt.spokenSentence}"</span></p>
-                    {sessionAttempt.errors.length > 0 ? (
-                      <div className="ml-4 mt-2 space-y-2">
-                        {sessionAttempt.errors.map((error, errorIndex) => (
-                          <div key={errorIndex} className="border-l-2 border-red-500 pl-3">
-                            <p className="text-red-700"><strong>Problem Word:</strong> {error.word}</p>
-                            {error.errorType && <p><strong>Error Type:</strong> {error.errorType}</p>}
-                            <p><strong>Issue:</strong> {error.phonemeIssue}</p>
-                            <p className="text-purple-700"><strong>Suggestion:</strong> <em>{error.suggestion}</em></p>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="text-green-700 mt-2">No specific errors identified for this attempt.</p>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </>
-          )}
+          <button 
+            onClick={onClose} 
+            className="p-2 hover:bg-white/10 rounded-full transition-colors"
+            aria-label="Close"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
         </div>
 
-        <div className="sticky bottom-0 bg-white p-4 border-t flex flex-wrap justify-end gap-3 rounded-b-lg">
-          <Button onClick={onClose} variant="secondary" className="min-w-[100px]">Close</Button>
-          
-          <Button onClick={handleDownloadBadge} isLoading={isGeneratingBadge} className="min-w-[150px] bg-yellow-500 hover:bg-yellow-600">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-            </svg>
-            Download Badge (PNG)
-          </Button>
+        <div className="p-6 md:p-10 flex flex-col items-center">
+          {/* Only the Badge Display */}
+          <div className="flex flex-col items-center text-center space-y-6 w-full">
+            <h3 className="text-xl font-bold text-slate-800 uppercase tracking-widest">You Earned a Badge!</h3>
+            
+            {badgePreviewUrl ? (
+              <div className="relative group animate-fadeIn w-full max-w-2xl">
+                <div className="absolute -inset-1 bg-gradient-to-r from-yellow-400 via-orange-500 to-yellow-400 rounded-2xl blur opacity-30 group-hover:opacity-60 transition duration-1000 group-hover:duration-200"></div>
+                <img 
+                  src={badgePreviewUrl} 
+                  alt="Speech Star Badge" 
+                  className="relative rounded-2xl shadow-2xl w-full border-4 border-white transform hover:scale-[1.01] transition-transform mx-auto"
+                />
+              </div>
+            ) : (
+              <div className="w-full h-96 bg-slate-100 animate-pulse rounded-2xl flex items-center justify-center text-slate-400 italic">
+                Polishing your star...
+              </div>
+            )}
+          </div>
+        </div>
 
-          <Button onClick={handleDownloadPdf} className="min-w-[150px]">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l3-3m-3 3l-3-3m-3 8h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v12a2 2 0 002 2z" />
-            </svg>
-            Download Report (PDF)
+        {/* Footer Actions */}
+        <div className="p-6 bg-slate-50 border-t border-slate-100 flex flex-wrap justify-center items-center gap-6">
+          <Button onClick={handleSaveReport} isLoading={isGenerating} className="bg-emerald-600 hover:bg-emerald-700 shadow-xl px-12 py-4 text-xl">
+            Save my report
+          </Button>
+          
+          <Button onClick={onClose} variant="secondary" className="px-12 py-4 text-xl !bg-white !text-purple-800 border-2 border-purple-200 hover:!bg-purple-50">
+            Start New Session
           </Button>
         </div>
       </div>

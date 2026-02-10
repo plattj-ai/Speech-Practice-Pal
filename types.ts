@@ -3,6 +3,7 @@
 export enum SessionState {
   IDLE = 'IDLE',
   CHOOSING_DIFFICULTY = 'CHOOSING_DIFFICULTY',
+  CHOOSING_PHONEME = 'CHOOSING_PHONEME',
   CHOOSING_DURATION = 'CHOOSING_DURATION',
   PRACTICE = 'PRACTICE',
   REPORT = 'REPORT',
@@ -16,10 +17,13 @@ export enum SentenceType {
 }
 
 export enum PhonemeType {
-  L = 'L',
   R = 'R',
-  S = 'S',
-  MIX = 'MIX',
+  S_Z = 'S/Z',
+  SH = 'Sh',
+  CH = 'Ch',
+  J = 'J',
+  L = 'L',
+  TH = 'TH'
 }
 
 export type DifficultyLevel = 'A' | 'B' | 'C' | 'D' | 'E' | 'F' | 'G' | 'H' | 'I' | 'J' | 'K' | 'L';
@@ -49,12 +53,13 @@ export interface ErrorDetail {
 export interface ReportData {
   totalSentencesInSession: number; 
   totalSentencesRead: number; 
+  totalSentencesSkipped: number;
   totalErrors: number; 
   errorHistory: ErrorDetail[];
   difficultSoundsAnalysis: string; 
   qualitativeAnalysis: string;
   sentenceType: SentenceType; 
-  targetPhoneme?: PhonemeType;
+  targetPhonemes: string[];
   difficultyLevel: DifficultyLevel;
 }
 

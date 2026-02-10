@@ -8,6 +8,8 @@ interface FeedbackDisplayProps {
 }
 
 const FeedbackDisplay: React.FC<FeedbackDisplayProps> = ({ sentence, errorWords }) => {
+  if (!sentence) return null; // Safety guard to prevent crash if sentence is undefined
+  
   const words = sentence.split(/\s+/);
 
   return (

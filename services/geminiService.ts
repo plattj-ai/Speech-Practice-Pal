@@ -1,25 +1,67 @@
 // services/geminiService.ts
 import { GoogleGenAI, Modality, Chat, GenerateContentResponse, Type } from "@google/genai";
-import { AI_PERSONA_PROMPT, VOICE_NAME, BASE_SPEECH_RATE } from '../constants';
-import { AnalysisResult, DetailedError, PhonemeType, DifficultyLevel } from '../types';
+import { AI_PERSONA_PROMPT, SENTENCE_GENERATION_PROMPT, VOICE_NAME, BASE_SPEECH_RATE } from '../constants';
+import { AnalysisResult, DetailedError, PhonemeType, DifficultyLevel, SentenceType } from '../types';
 import { decodeAudioData, decodeBase64 } from './audioService';
 
 interface GeminiServiceInstance {
   readSentence: (text: string, outputContext: AudioContext, speed?: number) => Promise<AudioBuffer | undefined>;
-  analyzePronunciation: (expectedSentence: string, audioBase64: string, targetPhoneme?: PhonemeType, difficultyLevel?: DifficultyLevel) => Promise<AnalysisResult>;
+  analyzePronunciation: (expectedSentence: string, audioBase64: string, targetPhonemes?: string[], difficultyLevel?: DifficultyLevel) => Promise<AnalysisResult>;
   generateQualitativeAnalysis: (reportSummary: string, difficultyLevel?: DifficultyLevel) => Promise<string>;
+  generateSentences: (count: number, difficulty: DifficultyLevel, phonemes: string[], type: SentenceType) => Promise<string[]>;
 }
 
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 const createGeminiService = (): GeminiServiceInstance => {
 
+  const generateSentences = async (count: number, difficulty: DifficultyLevel, phonemes: string[], type: SentenceType): Promise<string[]> => {
+    const targetDesc = phonemes.length === 0 ? "general speech" : `the following target sounds: ${phonemes.join(', ')}`;
+    const prompt = `Generate exactly ${count} unique sentences.
+    Difficulty Level: ${difficulty}
+    Target Sounds: ${targetDesc}
+    Style: ${type === SentenceType.CONVERSATIONAL ? "Conversational/Natural" : "Tongue Twister"}`;
+
+    try {
+      const response = await ai.models.generateContent({
+        model: 'gemini-3-flash-preview',
+        contents: [{ parts: [{ text: prompt }] }],
+        config: {
+          systemInstruction: SENTENCE_GENERATION_PROMPT,
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              sentences: {
+                type: Type.ARRAY,
+                items: { type: Type.STRING },
+                description: `List of ${count} sentences.`
+              }
+            },
+            required: ["sentences"]
+          }
+        }
+      });
+
+      const json = JSON.parse(response.text || '{"sentences": []}');
+      return json.sentences || [];
+    } catch (error) {
+      console.error("Sentence Generation Error:", error);
+      // Fallback in case of API failure
+      return ["The quick brown fox jumps over the lazy dog."];
+    }
+  };
+
   const readSentence = async (text: string, outputContext: AudioContext, speed: number = BASE_SPEECH_RATE): Promise<AudioBuffer | undefined> => {
     if (!text || text.trim() === '') return undefined;
+    
+    const paceInstruction = speed > 1.2 ? "quickly and clearly" : speed > 1.0 ? "at a brisk pace" : "at a steady, clear pace";
+    const prompt = `Speak this ${paceInstruction}: ${text}`;
+
     try {
       const response = await ai.models.generateContent({
         model: "gemini-2.5-flash-preview-tts",
-        contents: [{ parts: [{ text: text }] }], 
+        contents: [{ parts: [{ text: prompt }] }], 
         config: {
           responseModalities: [Modality.AUDIO],
           speechConfig: {
@@ -47,11 +89,11 @@ const createGeminiService = (): GeminiServiceInstance => {
     }
   };
 
-  const analyzePronunciation = async (expectedSentence: string, audioBase64: string, targetPhoneme?: PhonemeType, difficultyLevel: DifficultyLevel = 'A'): Promise<AnalysisResult> => {
+  const analyzePronunciation = async (expectedSentence: string, audioBase64: string, targetPhonemes?: string[], difficultyLevel: DifficultyLevel = 'A'): Promise<AnalysisResult> => {
     try {
-      const phonemeContext = targetPhoneme && targetPhoneme !== PhonemeType.MIX 
-        ? `Focus strictly on the /${targetPhoneme.toLowerCase()}/ sound.` 
-        : "";
+      const phonemeContext = targetPhonemes && targetPhonemes.length > 0
+        ? `Focus strictly on the articulation of the following phonemes: ${targetPhonemes.join(', ')}.` 
+        : "Evaluate overall pronunciation and intelligibility.";
 
       const response = await ai.models.generateContent({
         model: 'gemini-3-flash-preview',
@@ -69,7 +111,7 @@ const createGeminiService = (): GeminiServiceInstance => {
                 Instructions: 
                 - Be a mechanical coach. No fluff. 
                 - Loosen sensitivity by 10%: Allow for minor natural variations in speech that do not hinder overall intelligibility.
-                - Limit feedback to 1-3 sentences.
+                - Limit feedback to exactly 1-2 sentences.
                 - Use vocabulary appropriate for Level ${difficultyLevel}.`
               }
             ]
@@ -77,13 +119,13 @@ const createGeminiService = (): GeminiServiceInstance => {
         ],
         config: {
           systemInstruction: AI_PERSONA_PROMPT + `
-            Strict Requirement: overallFeedback MUST be 1-3 sentences maximum. 
+            Strict Requirement: overallFeedback MUST be 1-2 sentences maximum. No more.
             Threshold: Ignore subtle phonetic nuances. Only flag clear articulation errors or substitutions.
           `,
           thinkingConfig: {
             thinkingBudget: 2048
           },
-          temperature: 0.25, // Slightly higher to reduce hyper-fixation on perfection
+          temperature: 0.2, 
           responseMimeType: "application/json",
           responseSchema: {
             type: Type.OBJECT,
@@ -106,7 +148,7 @@ const createGeminiService = (): GeminiServiceInstance => {
                 type: Type.ARRAY,
                 items: { type: Type.STRING },
               },
-              overallFeedback: { type: Type.STRING, description: "1-3 sentences of mechanical coaching feedback." },
+              overallFeedback: { type: Type.STRING, description: "Exactly 1-2 sentences of mechanical coaching feedback." },
             },
             required: ["spokenTranscript", "detailedErrors", "overallDifficultPhonemes", "overallFeedback"],
           },
@@ -133,9 +175,9 @@ const createGeminiService = (): GeminiServiceInstance => {
     try {
       const response = await ai.models.generateContent({
         model: 'gemini-3-flash-preview',
-        contents: [{ parts: [{ text: `Summarize for clinical report: ${reportSummary}` }] }],
+        contents: [{ parts: [{ text: `Summarize for clinical report: ${reportSummary}. IMPORTANT: If sentences were skipped, explicitly note this in the analysis.` }] }],
         config: {
-          systemInstruction: AI_PERSONA_PROMPT + `\n\nProvide exactly 1-3 technical sentences for a pathologist's record.`,
+          systemInstruction: AI_PERSONA_PROMPT + `\n\nProvide 1-2 technical sentences for a pathologist's record. Mention any skipped items clearly.`,
           temperature: 0.5,
         },
       });
@@ -146,6 +188,7 @@ const createGeminiService = (): GeminiServiceInstance => {
   };
 
   return {
+    generateSentences,
     readSentence,
     analyzePronunciation,
     generateQualitativeAnalysis,
