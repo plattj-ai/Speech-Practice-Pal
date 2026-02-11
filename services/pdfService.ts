@@ -59,7 +59,7 @@ export const generatePdfReport = (reportData: ReportData): void => {
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(18);
   doc.setTextColor(textColor);
-  doc.text("Clinical Progress Report", margin, yOffset);
+  doc.text("Student Progress Report", margin, yOffset);
   yOffset += 10;
   
   doc.setFontSize(10);
@@ -67,10 +67,10 @@ export const generatePdfReport = (reportData: ReportData): void => {
   doc.text(`Generated on: ${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}`, margin, yOffset);
   yOffset += 15;
 
-  // Clinical Data Section
+  // Practice Data Section
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(14);
-  doc.text("Quantitative Data (Clinical Metrics)", margin, yOffset);
+  doc.text("Quantitative Data (Practice Metrics)", margin, yOffset);
   yOffset += 10;
   
   doc.setFont('helvetica', 'normal');
@@ -187,8 +187,8 @@ export const generatePdfReport = (reportData: ReportData): void => {
     doc.setFontSize(9);
     doc.setTextColor(accentColor);
     doc.setFont('helvetica', 'normal');
-    doc.text(`Generated for clinical record by ${APP_NAME} | Page ${i} of ${pageCount}`, margin, pageHeight - 10);
+    doc.text(`Generated for student record by ${APP_NAME} | Page ${i} of ${pageCount}`, margin, pageHeight - 10);
   }
 
-  doc.save(`Speech_Practice_Report_${new Date().toISOString().slice(0, 10)}.pdf`);
+  doc.save(`Student_Speech_Report_${new Date().toISOString().slice(0, 10)}.pdf`);
 };

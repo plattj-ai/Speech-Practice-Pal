@@ -84,7 +84,7 @@ export const generateBadgeImage = async (reportData: ReportData): Promise<string
 
   ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
   ctx.font = 'italic 20px Arial';
-  ctx.fillText('Clinical Practice Summary & Achievement', canvas.width / 2, 130);
+  ctx.fillText('Student Practice Summary & Achievement', canvas.width / 2, 130);
 
   // Star Graphic
   const drawStar = (cx: number, cy: number, spikes: number, outerRadius: number, innerRadius: number) => {
@@ -118,7 +118,7 @@ export const generateBadgeImage = async (reportData: ReportData): Promise<string
   ctx.textAlign = 'left';
   ctx.fillStyle = '#1E293B';
   ctx.font = 'bold 24px Arial';
-  ctx.fillText('SLP CLINICAL DATA:', 60, 420);
+  ctx.fillText('STUDENT PRACTICE DATA:', 60, 420);
 
   ctx.fillStyle = 'white';
   if (ctx.roundRect) {

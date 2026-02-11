@@ -109,7 +109,7 @@ const createGeminiService = (): GeminiServiceInstance => {
               {
                 text: `BALANCED PHONETIC ASSESSMENT (Level ${difficultyLevel}). Target: "${expectedSentence}". ${phonemeContext} 
                 Instructions: 
-                - Be a mechanical coach. No fluff. 
+                - Be a mechanical coach for the student. No fluff. 
                 - Loosen sensitivity by 10%: Allow for minor natural variations in speech that do not hinder overall intelligibility.
                 - Limit feedback to exactly 1-2 sentences.
                 - Use vocabulary appropriate for Level ${difficultyLevel}.`
@@ -148,7 +148,7 @@ const createGeminiService = (): GeminiServiceInstance => {
                 type: Type.ARRAY,
                 items: { type: Type.STRING },
               },
-              overallFeedback: { type: Type.STRING, description: "Exactly 1-2 sentences of mechanical coaching feedback." },
+              overallFeedback: { type: Type.STRING, description: "Exactly 1-2 sentences of mechanical coaching feedback for the student." },
             },
             required: ["spokenTranscript", "detailedErrors", "overallDifficultPhonemes", "overallFeedback"],
           },
@@ -175,9 +175,9 @@ const createGeminiService = (): GeminiServiceInstance => {
     try {
       const response = await ai.models.generateContent({
         model: 'gemini-3-flash-preview',
-        contents: [{ parts: [{ text: `Summarize for clinical report: ${reportSummary}. IMPORTANT: If sentences were skipped, explicitly note this in the analysis.` }] }],
+        contents: [{ parts: [{ text: `Summarize for student's speech report: ${reportSummary}. IMPORTANT: If sentences were skipped, explicitly note this in the analysis.` }] }],
         config: {
-          systemInstruction: AI_PERSONA_PROMPT + `\n\nProvide 1-2 technical sentences for a pathologist's record. Mention any skipped items clearly.`,
+          systemInstruction: AI_PERSONA_PROMPT + `\n\nProvide 1-2 technical sentences for a student's speech record. Mention any skipped items clearly.`,
           temperature: 0.5,
         },
       });
