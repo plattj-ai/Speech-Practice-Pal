@@ -52,4 +52,4 @@ export const FAST_SPEECH_RATE = 1.0;  // Set back to normal (1.0) as requested
 
 export const VOICE_NAME = 'Kore'; 
 
-export const MICROPHONE_GAIN_FACTOR = 2.0;
+export const MICROPHONE_GAIN_FACTOR = 3.0;
