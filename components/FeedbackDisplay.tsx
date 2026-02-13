@@ -13,7 +13,10 @@ const FeedbackDisplay: React.FC<FeedbackDisplayProps> = ({ sentence, errorWords 
   const words = sentence.split(/\s+/);
 
   return (
-    <p className={`text-center text-3xl md:text-4xl font-semibold leading-relaxed ${TEXT_DARK} p-4`}>
+    <p 
+      className={`text-center text-3xl md:text-4xl font-semibold leading-relaxed ${TEXT_DARK} p-4`}
+      aria-live="polite" // Announce dynamic feedback to screen readers
+    >
       {words.map((word, index) => {
         // Remove punctuation for comparison, but keep original for display
         const cleanedWord = word.toLowerCase().replace(/[.,!?;:]/g, '');

@@ -37,7 +37,7 @@ Requirement:
 export const APP_NAME = "Speech Practice Pal";
 export const APP_SLOGAN = "#SpeakWithConfidence";
 export const PRIMARY_PURPLE = 'bg-[#582D88]';
-export const ACCENT_BLUE = 'text-[#446CA3]'; 
+export const ACCENT_BLUE = 'text-[#3C5885]'; // Darkened for WCAG 2.1 AA compliance on normal text
 export const TEXT_WHITE = 'text-white';
 export const TEXT_DARK = 'text-gray-800';
 export const BUTTON_PRIMARY_CLASS = 'px-6 py-3 rounded-full font-semibold text-white transition-all duration-300';

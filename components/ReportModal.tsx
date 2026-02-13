@@ -40,7 +40,12 @@ const ReportModal: React.FC<ReportModalProps> = ({ reportData, onClose }) => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/80 backdrop-blur-sm p-4 sm:p-6 overflow-y-auto">
+    <div 
+      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/80 backdrop-blur-sm p-4 sm:p-6 overflow-y-auto"
+      role="dialog" // Indicate this is a dialog window
+      aria-modal="true" // Indicate that content outside the dialog is inert
+      aria-label="Speech practice session report" // Provide an accessible label for the dialog
+    >
       <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-4xl animate-scaleIn overflow-hidden my-auto">
         {/* Header */}
         <div className={`sticky top-0 bg-gradient-to-r from-purple-700 to-indigo-800 text-white p-6 flex justify-between items-center shadow-lg z-10`}>
@@ -51,9 +56,9 @@ const ReportModal: React.FC<ReportModalProps> = ({ reportData, onClose }) => {
           <button 
             onClick={onClose} 
             className="p-2 hover:bg-white/10 rounded-full transition-colors"
-            aria-label="Close"
+            aria-label="Close report" // More specific aria-label for clarity
           >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
@@ -69,7 +74,7 @@ const ReportModal: React.FC<ReportModalProps> = ({ reportData, onClose }) => {
                 <div className="absolute -inset-1 bg-gradient-to-r from-yellow-400 via-orange-500 to-yellow-400 rounded-2xl blur opacity-30 group-hover:opacity-60 transition duration-1000 group-hover:duration-200"></div>
                 <img 
                   src={badgePreviewUrl} 
-                  alt="Speech Star Badge" 
+                  alt="Speech Star Badge representing your session achievements" // Descriptive alt text for accessibility
                   className="relative rounded-2xl shadow-2xl w-full border-4 border-white transform hover:scale-[1.01] transition-transform mx-auto"
                 />
               </div>

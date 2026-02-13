@@ -73,6 +73,19 @@ const App: React.FC = () => {
   const totalSentencesSkippedRef = useRef<number>(0);
   const difficultPhonemesAcrossSession = useRef<Set<string>>(new Set());
 
+  // Array of short, positive phrases for successful sentences
+  const positiveFeedbackPhrases = [
+    "Excellent!",
+    "Well done!",
+    "Great job!",
+    "Perfect!",
+    "Fantastic!",
+    "Super!",
+    "Good work!",
+    "Nailed it!",
+    "Spot on!"
+  ];
+
   useEffect(() => {
     outputAudioContextRef.current = new AudioContext({ sampleRate: 24000 });
     outputAudioGainNodeRef.current = outputAudioContextRef.current.createGain();
@@ -287,7 +300,6 @@ const App: React.FC = () => {
       setSpokenTranscription(analysisResult.spokenTranscript);
       analysisResult.overallDifficultPhonemes.forEach(p => difficultPhonemesAcrossSession.current.add(p));
       setErrorDetailsForDisplay(analysisResult.detailedErrors);
-      setCurrentSentenceFeedback(analysisResult.overallFeedback);
       
       errorHistoryRef.current.push({
         timestamp: Date.now(),
@@ -297,19 +309,23 @@ const App: React.FC = () => {
         attempts: recognitionAttemptCount + 1,
       });
 
-      handleReadAloud(analysisResult.overallFeedback, FAST_SPEECH_RATE);
-      
       if (analysisResult.detailedErrors.length === 0) {
         totalSentencesReadRef.current++; 
         setIsCurrentSentenceSuccess(true);
+        // Set short, positive feedback for successful sentences
+        const randomPhrase = positiveFeedbackPhrases[Math.floor(Math.random() * positiveFeedbackPhrases.length)];
+        setCurrentSentenceFeedback(randomPhrase);
+        handleReadAloud(randomPhrase, FAST_SPEECH_RATE);
       } else {
         setRecognitionAttemptCount(prev => prev + 1);
+        setCurrentSentenceFeedback(analysisResult.overallFeedback);
+        handleReadAloud(analysisResult.overallFeedback, FAST_SPEECH_RATE);
       }
     } catch (error) {
       console.error(error);
       setIsLoading(false);
     }
-  }, [currentSentence, recognitionAttemptCount, targetPhonemes, difficultyLevel, handleReadAloud]);
+  }, [currentSentence, recognitionAttemptCount, targetPhonemes, difficultyLevel, handleReadAloud, positiveFeedbackPhrases]);
 
   const handleToggleRecord = useCallback(async () => {
     if (isRecording) {
@@ -347,7 +363,8 @@ const App: React.FC = () => {
         const gainNode = inputAudioContextRef.current.createGain();
         gainNode.gain.value = MICROPHONE_GAIN_FACTOR;
         source.connect(gainNode);
-        gainNode.connect(workletNode);
+        gainNode.connect(workletNode); // Corrected connection: gainNode now connects to workletNode
+        workletNode.connect(inputAudioContextRef.current.destination); // Connect worklet to destination to keep it alive
         workletNode.port.onmessage = (e) => { if (e.data instanceof Float32Array) audioDataBufferRef.current.push(new Float32Array(e.data)); };
         audioWorkletNodeRef.current = workletNode;
         microphoneStreamRef.current = stream; 
@@ -384,21 +401,22 @@ const App: React.FC = () => {
                   <button 
                     key={level}
                     onClick={() => { setDifficultyLevel(level as DifficultyLevel); }}
-                    className={`group flex flex-col items-center justify-center p-4 rounded-xl transition-all duration-300 border-2 shadow-sm ${
+                    className={`group flex flex-col items-center justify-center p-4 rounded-xl transition-all duration-300 border-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 ${ // Ensure visible focus
                       isSelected 
                         ? 'bg-purple-600 border-purple-600 scale-105' 
                         : 'bg-purple-50 border-purple-100 hover:border-purple-600 hover:bg-purple-100'
                     }`}
+                    aria-pressed={isSelected} // ARIA attribute for toggle buttons
                   >
                     <span className={`text-2xl font-bold ${isSelected ? 'text-white' : 'text-purple-800'}`}>{level}</span>
-                    <span className={`text-[10px] uppercase font-bold ${isSelected ? 'text-purple-100' : 'text-purple-400'}`}>Level</span>
+                    <span className={`text-[10px] uppercase font-bold ${isSelected ? 'text-purple-100' : 'text-purple-700'}`}>Level</span> {/* Darkened text-purple-400 for contrast */}
                   </button>
                 );
               })}
             </div>
 
             <Button 
-              className={`w-full py-5 text-2xl font-black uppercase tracking-widest shadow-xl transition-all duration-300 ${!difficultyLevel ? 'opacity-50 grayscale cursor-not-allowed' : 'hover:scale-105 active:scale-95'}`}
+              className={`w-full py-5 text-2xl font-black uppercase tracking-widest shadow-xl transition-all duration-300 hover:scale-105 active:scale-95 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 ${!difficultyLevel ? 'opacity-50 grayscale cursor-not-allowed' : ''}`} // Ensure visible focus
               onClick={() => difficultyLevel && setSessionState(SessionState.CHOOSING_PHONEME)}
               disabled={!difficultyLevel}
             >
@@ -408,82 +426,69 @@ const App: React.FC = () => {
         );
 
       case SessionState.CHOOSING_PHONEME:
+        const allPhonemes = Object.values(PhonemeType);
+        const allSelected = targetPhonemes.length === allPhonemes.length;
+        const colorMap: Record<PhonemeType, { base: string, selected: string, hover: string, text: string, subtext: string }> = {
+          [PhonemeType.R]: { base: 'purple', selected: 'bg-purple-600 border-purple-600', hover: 'hover:bg-purple-100 hover:border-purple-600', text: 'text-purple-800', subtext: 'text-purple-700' },
+          [PhonemeType.S_Z]: { base: 'blue', selected: 'bg-blue-600 border-blue-600', hover: 'hover:bg-blue-100 hover:border-blue-600', text: 'text-blue-800', subtext: 'text-blue-700' },
+          [PhonemeType.SH]: { base: 'indigo', selected: 'bg-indigo-600 border-indigo-600', hover: 'hover:bg-indigo-100 hover:border-indigo-600', text: 'text-indigo-800', subtext: 'text-indigo-700' },
+          [PhonemeType.CH]: { base: 'rose', selected: 'bg-rose-600 border-rose-600', hover: 'hover:bg-rose-100 hover:border-rose-600', text: 'text-rose-800', subtext: 'text-rose-700' },
+          [PhonemeType.J]: { base: 'emerald', selected: 'bg-emerald-600 border-emerald-600', hover: 'hover:bg-emerald-100 hover:border-emerald-600', text: 'text-emerald-800', subtext: 'text-emerald-700' },
+          [PhonemeType.L]: { base: 'sky', selected: 'bg-sky-600 border-sky-600', hover: 'hover:bg-sky-100 hover:border-sky-600', text: 'text-sky-800', subtext: 'text-sky-700' },
+          [PhonemeType.TH]: { base: 'amber', selected: 'bg-amber-600 border-amber-600', hover: 'hover:bg-amber-100 hover:border-amber-600', text: 'text-amber-800', subtext: 'text-amber-700' },
+        };
         return (
           <div className="flex flex-col items-center justify-center p-8 bg-white rounded-2xl shadow-2xl max-w-2xl mx-auto animate-fadeIn text-center">
              <div className="flex items-center space-x-2 mb-4">
-              <button onClick={() => setSessionState(SessionState.CHOOSING_DIFFICULTY)} className="text-purple-600 hover:underline text-xs font-bold uppercase tracking-widest">← Back to Levels</button>
+              <button 
+                onClick={() => setSessionState(SessionState.CHOOSING_DIFFICULTY)} 
+                className="text-purple-600 hover:underline text-xs font-bold uppercase tracking-widest focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2" // Ensure visible focus
+              >
+                ← Back to Levels
+              </button>
             </div>
             <h2 className="text-4xl font-black text-purple-900 mb-2">Step 2</h2>
             <p className="text-gray-600 mb-8 font-medium italic">Select Target Sounds (Choose 1 or more)</p>
             
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 w-full mb-10">
-              {[
-                { type: PhonemeType.R, label: 'R Sound', color: 'purple' },
-                { type: PhonemeType.S_Z, label: 'S/Z Sound', color: 'blue' },
-                { type: PhonemeType.SH, label: 'Sh Sound', color: 'indigo' },
-                { type: PhonemeType.CH, label: 'Ch Sound', color: 'rose' },
-                { type: PhonemeType.J, label: 'J Sound', color: 'emerald' },
-                { type: PhonemeType.L, label: 'L Sound', color: 'sky' },
-                { type: PhonemeType.TH, label: 'TH Sound', color: 'amber' },
-              ].map((item) => {
-                const isSelected = targetPhonemes.includes(item.type);
-                const colors = {
-                  blue: isSelected ? 'bg-blue-600 border-blue-600' : 'bg-blue-50 border-blue-100 hover:bg-blue-100 hover:border-blue-600',
-                  purple: isSelected ? 'bg-purple-600 border-purple-600' : 'bg-purple-50 border-purple-100 hover:bg-purple-100 hover:border-purple-600',
-                  indigo: isSelected ? 'bg-indigo-600 border-indigo-600' : 'bg-indigo-50 border-indigo-100 hover:bg-indigo-100 hover:border-indigo-600',
-                  rose: isSelected ? 'bg-rose-600 border-rose-600' : 'bg-rose-50 border-rose-100 hover:bg-rose-100 hover:border-rose-600',
-                  emerald: isSelected ? 'bg-emerald-600 border-emerald-600' : 'bg-emerald-50 border-emerald-100 hover:bg-emerald-100 hover:border-emerald-600',
-                  sky: isSelected ? 'bg-sky-600 border-sky-600' : 'bg-sky-50 border-sky-100 hover:bg-sky-100 hover:border-sky-600',
-                  amber: isSelected ? 'bg-amber-600 border-amber-600' : 'bg-amber-50 border-amber-100 hover:bg-amber-100 hover:border-amber-600',
-                };
-                const textColors = {
-                  blue: isSelected ? 'text-white' : 'text-blue-800',
-                  purple: isSelected ? 'text-white' : 'text-purple-800',
-                  indigo: isSelected ? 'text-white' : 'text-indigo-800',
-                  rose: isSelected ? 'text-white' : 'text-rose-800',
-                  emerald: isSelected ? 'text-white' : 'text-emerald-800',
-                  sky: isSelected ? 'text-white' : 'text-sky-800',
-                  amber: isSelected ? 'text-white' : 'text-amber-800',
-                };
-                const subtextColors = {
-                  blue: isSelected ? 'text-blue-100' : 'text-blue-400',
-                  purple: isSelected ? 'text-purple-100' : 'text-purple-400',
-                  indigo: isSelected ? 'text-indigo-100' : 'text-indigo-400',
-                  rose: isSelected ? 'text-rose-100' : 'text-rose-400',
-                  emerald: isSelected ? 'text-emerald-100' : 'text-emerald-400',
-                  sky: isSelected ? 'text-sky-100' : 'text-sky-400',
-                  amber: isSelected ? 'text-amber-100' : 'text-amber-400',
-                };
+              {allPhonemes.map((type) => {
+                const isSelected = targetPhonemes.includes(type);
+                const itemConfig = colorMap[type];
 
                 return (
                   <button 
-                    key={item.type}
-                    onClick={() => togglePhoneme(item.type)}
-                    className={`group flex flex-col items-center justify-center p-4 rounded-2xl transition-all duration-300 border-2 shadow-sm ${colors[item.color as keyof typeof colors]} ${isSelected ? 'scale-105' : ''}`}
+                    key={type}
+                    onClick={() => togglePhoneme(type)}
+                    className={`group flex flex-col items-center justify-center p-4 rounded-2xl transition-all duration-300 border-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-${itemConfig.base}-500 focus:ring-offset-2 ${ // Ensure visible focus
+                      isSelected 
+                        ? itemConfig.selected + ' scale-105' 
+                        : `bg-${itemConfig.base}-50 border-${itemConfig.base}-100 ${itemConfig.hover}`
+                    }`}
+                    aria-pressed={isSelected} // ARIA attribute for toggle buttons
                   >
-                    <span className={`text-2xl font-black ${textColors[item.color as keyof typeof textColors]}`}>{item.type}</span>
-                    <span className={`text-[10px] font-bold mt-1 uppercase tracking-widest ${subtextColors[item.color as keyof typeof subtextColors]}`}>{item.label}</span>
+                    <span className={`text-2xl font-black ${isSelected ? 'text-white' : itemConfig.text}`}>{type}</span>
+                    <span className={`text-[10px] font-bold mt-1 uppercase tracking-widest ${isSelected ? `text-${itemConfig.base}-100` : itemConfig.subtext}`}>{type} Sound</span>
                   </button>
                 );
               })}
               
               <button 
                 onClick={() => {
-                   const all = Object.values(PhonemeType);
-                   if (targetPhonemes.length === all.length) setTargetPhonemes([]);
-                   else setTargetPhonemes(all);
+                   if (allSelected) setTargetPhonemes([]);
+                   else setTargetPhonemes(allPhonemes);
                 }}
-                className={`group flex flex-col items-center justify-center p-4 rounded-2xl transition-all duration-300 border-2 shadow-sm bg-slate-50 border-slate-100 hover:bg-slate-100 hover:border-slate-400`}
+                className={`group flex flex-col items-center justify-center p-4 rounded-2xl transition-all duration-300 border-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2 bg-slate-50 border-slate-100 hover:bg-slate-100 hover:border-slate-400`} // Ensure visible focus
+                aria-pressed={allSelected}
               >
                 <span className={`text-2xl font-black text-slate-800`}>∞</span>
-                <span className={`text-[10px] font-bold mt-1 uppercase tracking-widest text-slate-400`}>
-                  {targetPhonemes.length === Object.values(PhonemeType).length ? 'Clear All' : 'Select All'}
+                <span className={`text-[10px] font-bold mt-1 uppercase tracking-widest ${allSelected ? 'text-slate-100' : 'text-slate-700'}`}> {/* Darkened text-slate-400 for contrast */}
+                  {allSelected ? 'Clear All' : 'Select All'}
                 </span>
               </button>
             </div>
 
             <Button 
-              className={`w-full py-5 text-2xl font-black uppercase tracking-widest shadow-xl ring-offset-2 ring-purple-600 hover:scale-105 active:scale-95 ${targetPhonemes.length === 0 ? 'opacity-50 grayscale cursor-not-allowed' : ''}`} 
+              className={`w-full py-5 text-2xl font-black uppercase tracking-widest shadow-xl ring-offset-2 ring-purple-600 hover:scale-105 active:scale-95 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 ${targetPhonemes.length === 0 ? 'opacity-50 grayscale cursor-not-allowed' : ''}`} // Ensure visible focus
               disabled={targetPhonemes.length === 0}
               onClick={() => setSessionState(SessionState.CHOOSING_DURATION)}
             >
@@ -496,34 +501,63 @@ const App: React.FC = () => {
         return (
           <div className="flex flex-col items-center justify-center p-8 bg-white rounded-2xl shadow-2xl max-w-2xl mx-auto animate-fadeIn text-center">
             <div className="flex items-center space-x-2 mb-4">
-              <button onClick={() => setSessionState(SessionState.CHOOSING_PHONEME)} className="text-purple-600 hover:underline text-xs font-bold uppercase tracking-widest">← Back to Sound</button>
-              <span className="text-gray-300">|</span>
-              <span className="text-[10px] font-bold uppercase tracking-widest text-purple-400">Level {difficultyLevel} / {targetPhonemes.length} Sounds</span>
+              <button 
+                onClick={() => setSessionState(SessionState.CHOOSING_PHONEME)} 
+                className="text-purple-600 hover:underline text-xs font-bold uppercase tracking-widest focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2" // Ensure visible focus
+              >
+                ← Back to Sound
+              </button>
+              <span className="text-slate-600">|</span> {/* Darkened text-slate-300 for contrast */}
+              <span className="text-[10px] font-bold uppercase tracking-widest text-purple-700">Level {difficultyLevel} / {targetPhonemes.length} Sounds</span> {/* Darkened text-purple-400 for contrast */}
             </div>
             <h2 className="text-4xl font-black text-purple-900 mb-2">Step 3</h2>
             <p className="text-gray-600 mb-8 font-medium italic">Finalize Session Details</p>
             
             <div className="w-full mb-8">
-              <p className="text-xs font-black uppercase tracking-[0.2em] text-gray-400 mb-4">Style</p>
+              <p className="text-xs font-black uppercase tracking-[0.2em] text-gray-600 mb-4">Style</p> {/* Darkened text-gray-400 for contrast */}
               <div className="flex flex-col md:flex-row gap-3">
-                <Button className="flex-1 py-4" onClick={() => setChosenSentenceType(SentenceType.CONVERSATIONAL)} variant={chosenSentenceType === SentenceType.CONVERSATIONAL ? 'primary' : 'secondary'}>
+                <Button 
+                  className="flex-1 py-4" 
+                  onClick={() => setChosenSentenceType(SentenceType.CONVERSATIONAL)} 
+                  variant={chosenSentenceType === SentenceType.CONVERSATIONAL ? 'primary' : 'secondary'}
+                  aria-pressed={chosenSentenceType === SentenceType.CONVERSATIONAL} // ARIA attribute for toggle buttons
+                >
                   Conversational
                 </Button>
-                <Button className="flex-1 py-4" onClick={() => setChosenSentenceType(SentenceType.TONGUE_TWISTER)} variant={chosenSentenceType === SentenceType.TONGUE_TWISTER ? 'primary' : 'secondary'}>
+                <Button 
+                  className="flex-1 py-4" 
+                  onClick={() => setChosenSentenceType(SentenceType.TONGUE_TWISTER)} 
+                  variant={chosenSentenceType === SentenceType.TONGUE_TWISTER ? 'primary' : 'secondary'}
+                  aria-pressed={chosenSentenceType === SentenceType.TONGUE_TWISTER} // ARIA attribute for toggle buttons
+                >
                   Tongue Twisters
                 </Button>
               </div>
             </div>
 
             <div className="w-full mb-10">
-              <p className="text-xs font-black uppercase tracking-[0.2em] text-gray-400 mb-4">How Many Sentences?</p>
+              <p className="text-xs font-black uppercase tracking-[0.2em] text-gray-600 mb-4">How Many Sentences?</p> {/* Darkened text-gray-400 for contrast */}
               <div className="flex flex-row gap-3 justify-center">
-                <Button className="px-10" onClick={() => setTotalSentencesInSession(10)} variant={totalSentencesInSession === 10 ? 'primary' : 'secondary'}>10</Button>
-                <Button className="px-10" onClick={() => setTotalSentencesInSession(20)} variant={totalSentencesInSession === 20 ? 'primary' : 'secondary'}>20</Button>
+                <Button 
+                  className="px-10" 
+                  onClick={() => setTotalSentencesInSession(10)} 
+                  variant={totalSentencesInSession === 10 ? 'primary' : 'secondary'}
+                  aria-pressed={totalSentencesInSession === 10} // ARIA attribute for toggle buttons
+                >
+                  10
+                </Button>
+                <Button 
+                  className="px-10" 
+                  onClick={() => setTotalSentencesInSession(20)} 
+                  variant={totalSentencesInSession === 20 ? 'primary' : 'secondary'}
+                  aria-pressed={totalSentencesInSession === 20} // ARIA attribute for toggle buttons
+                >
+                  20
+                </Button>
               </div>
             </div>
 
-            <Button className="w-full py-5 text-2xl font-black uppercase tracking-widest shadow-xl ring-offset-2 ring-purple-600 hover:scale-105 active:scale-95" onClick={() => startPracticeSession(totalSentencesInSession, chosenSentenceType, targetPhonemes)}>
+            <Button className="w-full py-5 text-2xl font-black uppercase tracking-widest shadow-xl ring-offset-2 ring-purple-600 hover:scale-105 active:scale-95 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2" onClick={() => startPracticeSession(totalSentencesInSession, chosenSentenceType, targetPhonemes)}> {/* Ensure visible focus */}
               Start Practice!
             </Button>
           </div>
@@ -534,7 +568,7 @@ const App: React.FC = () => {
           <div className="flex flex-col items-center justify-between h-full w-full p-4 md:p-8">
             <div className="flex flex-col items-center w-full max-w-4xl">
                <div className="flex justify-between items-end w-full mb-1 px-1">
-                 <span className="text-[10px] font-black uppercase tracking-[0.2em] text-purple-500">Practice Progress</span>
+                 <span className="text-[10px] font-black uppercase tracking-[0.2em] text-purple-700">Practice Progress</span> {/* Darkened text-purple-500 for contrast */}
                  <span className="text-xs font-bold text-purple-700">{totalSentencesReadRef.current + totalSentencesSkippedRef.current} / {totalSentencesInSession}</span>
                </div>
                <div className="w-full bg-slate-200 rounded-full h-2 shadow-inner overflow-hidden mb-4">
@@ -545,7 +579,7 @@ const App: React.FC = () => {
                </div>
                <div className="flex space-x-2">
                  <p className={`text-sm font-bold ${ACCENT_BLUE} uppercase tracking-tight`}>Try: {recognitionAttemptCount + 1} / 3</p>
-                 <span className="text-slate-300">|</span>
+                 <span className="text-slate-600">|</span> {/* Darkened text-slate-300 for contrast */}
                  {targetPhonemes.length > 0 && (
                    <span className="text-[10px] bg-purple-100 text-purple-700 px-2 py-0.5 rounded-md font-bold uppercase">
                      {targetPhonemes.length > 2 ? `${targetPhonemes.slice(0, 2).join(', ')}...` : targetPhonemes.join(', ')} Sound(s)
@@ -581,7 +615,8 @@ const App: React.FC = () => {
                     <button 
                       onClick={handleSkipSentence}
                       disabled={isRecording || isSpeaking || isLoading}
-                      className="px-8 py-3 rounded-2xl text-slate-400 hover:text-purple-600 hover:bg-purple-50 font-black uppercase text-xs tracking-[0.2em] transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                      className="px-8 py-3 rounded-2xl text-slate-600 hover:text-purple-600 hover:bg-purple-50 font-black uppercase text-xs tracking-[0.2em] transition-all disabled:opacity-30 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2" // Darkened text-slate-400 for contrast, ensure visible focus
+                      aria-label="Skip to the next sentence" // ARIA label for clarity
                     >
                       Skip →
                     </button>
@@ -589,7 +624,7 @@ const App: React.FC = () => {
                 ) : (
                   <Button 
                     onClick={moveToNextSentence} 
-                    className="px-12 py-4 text-xl font-bold bg-green-600 hover:bg-green-700 animate-scaleIn shadow-lg ring-2 ring-green-100 ring-offset-4 rounded-full"
+                    className="px-12 py-4 text-xl font-bold bg-green-600 hover:bg-green-700 animate-scaleIn shadow-lg ring-2 ring-green-100 ring-offset-4 rounded-full focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2" // Ensure visible focus
                   >
                     {totalSentencesReadRef.current + totalSentencesSkippedRef.current >= totalSentencesInSession 
                       ? "Finish Session 🎉" 
@@ -607,7 +642,7 @@ const App: React.FC = () => {
           <div className="flex flex-col items-center justify-center p-6 bg-white rounded-lg shadow-xl max-w-lg mx-auto text-center">
             <h2 className="text-3xl font-bold text-red-600 mb-4">Microphone Access Required</h2>
             <p className="text-lg mb-6">{microphoneError || "Enable microphone access in settings."}</p>
-            <Button onClick={() => setSessionState(SessionState.CHOOSING_DIFFICULTY)} variant="secondary">Go Back</Button>
+            <Button onClick={() => setSessionState(SessionState.CHOOSING_DIFFICULTY)} variant="secondary" className="focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">Go Back</Button> {/* Ensure visible focus */}
           </div>
         );
       default: return null;

@@ -12,8 +12,8 @@ export const generatePdfReport = (reportData: ReportData): void => {
   const primaryColor = '#582D88'; 
   const accentColor = '#446CA3'; 
   const textColor = '#1E293B';
-  const roseColor = '#F43F5E';
-  const emeraldColor = '#10B981';
+  const roseColor = '#BE123C'; // Darkened for WCAG 2.1 AA compliance (rose-700)
+  const emeraldColor = '#047857'; // Darkened for WCAG 2.1 AA compliance (emerald-700)
   const containerBg = '#F8FAFC';
   const margin = 20;
   const pageWidth = doc.internal.pageSize.getWidth();

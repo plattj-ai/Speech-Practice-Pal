@@ -17,8 +17,8 @@ export const generateBadgeImage = async (reportData: ReportData): Promise<string
   const secondaryBlue = '#446CA3';
   const backgroundLight = '#F8FAFC';
   const gold = '#F59E0B';
-  const emerald = '#10B981';
-  const rose = '#F43F5E';
+  const emerald = '#047857'; // Darkened for WCAG 2.1 AA compliance (emerald-700)
+  const rose = '#BE123C'; // Darkened for WCAG 2.1 AA compliance (rose-700)
 
   const textToWrap = `Coach Summary: ${reportData.qualitativeAnalysis}`;
   ctx.font = 'italic bold 20px Arial';
