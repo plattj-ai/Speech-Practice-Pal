@@ -409,7 +409,6 @@ const App: React.FC = () => {
                     aria-pressed={isSelected} // ARIA attribute for toggle buttons
                   >
                     <span className={`text-2xl font-bold ${isSelected ? 'text-white' : 'text-purple-800'}`}>{level}</span>
-                    <span className={`text-[10px] uppercase font-bold ${isSelected ? 'text-purple-100' : 'text-purple-700'}`}>Level</span> {/* Darkened text-purple-400 for contrast */}
                   </button>
                 );
               })}
@@ -467,7 +466,6 @@ const App: React.FC = () => {
                     aria-pressed={isSelected} // ARIA attribute for toggle buttons
                   >
                     <span className={`text-2xl font-black ${isSelected ? 'text-white' : itemConfig.text}`}>{type}</span>
-                    <span className={`text-[10px] font-bold mt-1 uppercase tracking-widest ${isSelected ? `text-${itemConfig.base}-100` : itemConfig.subtext}`}>{type} Sound</span>
                   </button>
                 );
               })}
@@ -477,13 +475,14 @@ const App: React.FC = () => {
                    if (allSelected) setTargetPhonemes([]);
                    else setTargetPhonemes(allPhonemes);
                 }}
-                className={`group flex flex-col items-center justify-center p-4 rounded-2xl transition-all duration-300 border-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2 bg-slate-50 border-slate-100 hover:bg-slate-100 hover:border-slate-400`} // Ensure visible focus
+                className={`group flex flex-col items-center justify-center p-4 rounded-2xl transition-all duration-300 border-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2 ${
+                  allSelected 
+                    ? 'bg-slate-600 border-slate-600 scale-105' 
+                    : 'bg-slate-50 border-slate-100 hover:bg-slate-100 hover:border-slate-400'
+                }`}
                 aria-pressed={allSelected}
               >
-                <span className={`text-2xl font-black text-slate-800`}>∞</span>
-                <span className={`text-[10px] font-bold mt-1 uppercase tracking-widest ${allSelected ? 'text-slate-100' : 'text-slate-700'}`}> {/* Darkened text-slate-400 for contrast */}
-                  {allSelected ? 'Clear All' : 'Select All'}
-                </span>
+                <span className={`text-2xl font-black ${allSelected ? 'text-white' : 'text-slate-800'}`}>All</span>
               </button>
             </div>
 

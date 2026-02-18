@@ -41,7 +41,7 @@ const ReadAloudButton: React.FC<ReadAloudButtonProps> = ({ isSpeaking, onReadAlo
       aria-label={isSpeaking ? "Stop reading" : "Read aloud"}
     >
       {SpeechIcon}
-      <span className="text-white font-bold mt-1 text-[11pt]">Read Aloud</span>
+      <span className="text-white font-bold mt-1 text-[11pt]">Listen</span>
     </button>
   );
 };

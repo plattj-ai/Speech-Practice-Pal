@@ -49,7 +49,7 @@ const MicrophoneButton: React.FC<MicrophoneButtonProps> = ({ isRecording, onTogg
       >
         {MicrophoneIcon}
         <span className="text-white font-bold mt-1 z-10 text-[11pt]">
-          {isRecording ? 'Stop' : 'Listen'}
+          {isRecording ? 'Stop' : 'Record'}
         </span>
       </button>
     </div>
